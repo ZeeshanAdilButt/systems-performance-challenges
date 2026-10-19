@@ -17,6 +17,7 @@ memory, disk, network, the runtime) and build their own tools along the way.
 | [01 · The knee](labs/01-the-knee) | How busy can a server get before people notice? | About 75%. After that, waiting time shoots up. |
 | [02 · Averages lie](labs/02-averages-lie) | Can the graphs say "fine" while people wait? | Yes. Bursts hide inside averages, and some load tools miss most slow requests. |
 | [03 · Tail at scale](labs/03-tail-at-scale) | What if one page needs answers from 50 servers? | A rare slow server makes 40% of pages slow. Sending a backup copy of late calls fixes it. |
+| [04 · Adaptive hedging](labs/04-adaptive-hedging) | How late is "late" when normal calls keep getting slower? | Don't pick a number. A fixed timer resent 86% of calls; one set from recent calls resent 7%. |
 
 Each lab is one folder with everything in it:
 

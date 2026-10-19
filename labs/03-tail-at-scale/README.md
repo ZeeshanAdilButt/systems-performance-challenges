@@ -109,8 +109,8 @@ laptop also explains why measured slow pages, 54%, ran above the math, 39%: call
 slow because of the machine, not just the 1-in-100 draw.)
 
 Real systems set the hedge timer from recent latency (for example, "the 95th percentile
-of the last minute") and cap how many extra calls hedging may send. A later lab will
-build that.
+of the last minute") and cap how many extra calls hedging may send.
+[Lab 04](../04-adaptive-hedging) builds both.
 
 Two more things worth knowing:
 

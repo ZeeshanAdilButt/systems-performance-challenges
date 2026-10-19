@@ -2,8 +2,8 @@
 # Every gate in one run: lint, strict types, tests, and every challenge.
 # tools/verify.py does the work and writes .cache/reports/.
 #
-#   ./verify            everything (about five minutes)
-#   ./verify --quick    shorter challenge runs (about two minutes)
+#   ./verify            everything (about seven minutes)
+#   ./verify --quick    shorter challenge runs (about three minutes)
 set -euo pipefail
 cd "$(dirname "$0")"
 

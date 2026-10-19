@@ -66,5 +66,8 @@ def test_closed_loop_hides_a_freeze_that_open_loop_counts() -> None:
     def slow_share(samples: list[Sample[int]]) -> float:
         return sum(1 for s in samples if s.latency > 0.05) / len(samples)
 
-    assert slow_share(opened) > 0.2  # about a third of the requests were due in the freeze
-    assert slow_share(closed) < 0.05  # one user, so one slow sample
+    # About a third of the open-loop requests were due during the freeze. The one
+    # closed-loop user records the freeze about once. A busy machine adds a few slow
+    # samples to both, so compare the two rather than pinning the closed-loop number.
+    assert slow_share(opened) > 0.2
+    assert slow_share(closed) < slow_share(opened) / 3

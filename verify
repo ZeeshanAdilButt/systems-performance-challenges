@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Every gate in one run: lint, strict types, tests, and every challenge.
+# tools/verify.py does the work and writes reports/.
+#
+#   ./verify            everything (about five minutes)
+#   ./verify --quick    shorter challenge runs (about two minutes)
+set -euo pipefail
+cd "$(dirname "$0")"
+
+if command -v uv >/dev/null 2>&1; then
+  uv sync --all-packages --frozen --quiet
+  exec uv run --frozen --no-sync python tools/verify.py "$@"
+fi
+
+# No uv: a plain virtualenv. `--group` needs pip 25.1 or newer, hence the upgrade.
+python3 -m venv .venv
+if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+"$PY" -m pip install --quiet --upgrade pip
+"$PY" -m pip install --quiet --group dev \
+  -e packages/jiffy-metrics -e packages/jiffy-load -e packages/jiffy-queueing \
+  -e packages/jiffy-service \
+  -e challenges/01-the-knee -e challenges/02-averages-lie -e challenges/03-tail-at-scale
+exec "$PY" tools/verify.py "$@"

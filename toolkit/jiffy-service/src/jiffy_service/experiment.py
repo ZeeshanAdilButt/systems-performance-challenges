@@ -6,6 +6,9 @@ because the interesting lessons live in the gap between them:
 
 - the **workload** view: latency per request, measured by the client;
 - the **resource** view: utilization and saturation, measured by the server.
+
+When a dashboard is watching (see ``jiffy_metrics.live``), every request is also sent to
+it the moment it finishes.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from jiffy_load import Sample, closed_loop, open_loop, poisson, throughput
-from jiffy_metrics import Histogram
+from jiffy_metrics import Histogram, live
 from jiffy_service.client import Client, Reply
 
 
@@ -58,7 +61,7 @@ def drive_open(
 ) -> Run:
     """Request ``i`` asks for ``work[i]`` seconds and is due at ``schedule[i]``."""
     client.reset()
-    samples = open_loop(schedule, lambda i: client.work(work[i]))
+    samples = open_loop(schedule, lambda i: client.work(work[i]), on_sample=live.record)
     return Run(samples, client.use(widths))
 
 
@@ -72,7 +75,9 @@ def drive_closed(
     widths: Sequence[float] = (1.0,),
 ) -> Run:
     client.reset()
-    samples = closed_loop(users, duration, lambda i: client.work(work(i)), think=think)
+    samples = closed_loop(
+        users, duration, lambda i: client.work(work(i)), think=think, on_sample=live.record
+    )
     return Run(samples, client.use(widths))
 
 

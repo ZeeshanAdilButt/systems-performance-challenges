@@ -18,6 +18,9 @@ blind spot.
 ``Stall`` simulates a stop-the-world pause, such as a garbage collector or a VM being
 descheduled: every ``every`` seconds, all threads (readers included) freeze for
 ``length`` seconds.
+
+With a dashboard watching (see ``jiffy_metrics.live``), the server also reports how busy
+its workers were and how long the queue was, ten times a second.
 """
 
 from __future__ import annotations
@@ -30,7 +33,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from jiffy_metrics import UseRecorder
+from jiffy_metrics import UseRecorder, live
 from jiffy_service.protocol import Message, decode, encode
 
 clock = time.perf_counter
@@ -93,6 +96,8 @@ class Server:
             self._spawn(self._work)
         if self.stall is not None:
             self._spawn(self._stall, self.stall)
+        if live.enabled():
+            self._spawn(self._report_live)
         return self
 
     def stop(self) -> None:
@@ -171,6 +176,23 @@ class Server:
                 return True
             time.sleep(min(left, 0.05))
         return self._stop.is_set()
+
+    def _report_live(self) -> None:
+        """Busy % and queue length over the last ``live.EVERY`` seconds, on repeat. A
+        stalled process can't report, so a pause shows up as a gap on the dashboard."""
+        while not self._sleep(live.EVERY):
+            if not self._running.is_set():
+                self._running.wait()
+                continue  # the window just ended inside the pause: skip it
+            window = self.use.recent(live.EVERY)
+            live.send(
+                {
+                    "kind": "use",
+                    "busy": window.utilization,
+                    "queue": window.mean_queue,
+                    "max_queue": window.max_queue,
+                }
+            )
 
     def _stall(self, stall: Stall) -> None:
         while not self._sleep(stall.every):

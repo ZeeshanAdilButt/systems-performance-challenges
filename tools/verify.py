@@ -1,11 +1,11 @@
 """Run every gate and print one report.
 
-    ./verify            everything: lint, types, tests, and every lab in full
-    ./verify --quick    the labs in their short form
+    ./verify            everything: lint, types, tests, and every challenge part in full
+    ./verify --quick    the parts in their short form
 
 Works the same on Windows, macOS and Linux: nothing here needs more than Python. Reports
-land in .cache/reports/: verify.md, plus one report per lab. (A lab run on its own writes
-results.md next to its script instead; verify leaves those alone.)
+land in .cache/reports/: verify.md, plus one report per part. (A part run on its own
+writes results.md next to its script instead; verify leaves those alone.)
 """
 
 from __future__ import annotations
@@ -24,12 +24,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REPORTS = ROOT / ".cache" / "reports"
 PYTHON = sys.executable
-LABS = [
-    ("01 the knee", "labs/01-the-knee/knee.py"),
-    ("02 averages lie", "labs/02-averages-lie/averages_lie.py"),
-    ("03 tail at scale", "labs/03-tail-at-scale/tail_at_scale.py"),
-    ("04 adaptive hedging", "labs/04-adaptive-hedging/adaptive_hedging.py"),
-]
+
+
+def parts() -> list[tuple[str, str]]:
+    """Every part of every challenge: a part-*/ folder with one script that isn't a test."""
+    found = []
+    for folder in sorted(ROOT.glob("challenges/challenge-*/part-*")):
+        scripts = [p for p in folder.glob("*.py") if not p.name.startswith("test_")]
+        if len(scripts) == 1:
+            name = f"{folder.parent.name.split('-')[1]}.{folder.name.removeprefix('part-')}"
+            found.append((name, scripts[0].relative_to(ROOT).as_posix()))
+    return found
 
 
 @dataclass
@@ -93,9 +98,9 @@ def ruff() -> tuple[bool, str, str]:
 
 
 def mypy() -> tuple[bool, str, str]:
-    """One run per project: each toolkit package and each lab is checked on its own."""
+    """One run per project: each toolkit package and each challenge part on its own."""
     groups = [[str(d / "src"), str(d / "tests")] for d in sorted(ROOT.glob("toolkit/jiffy-*"))]
-    groups += [[str(d)] for d in sorted(ROOT.glob("labs/*")) if d.is_dir()]
+    groups += [[str(ROOT / Path(script).parent)] for _, script in parts()]
     groups.append([str(ROOT / "tools")])
     files = 0
     failures = []
@@ -133,7 +138,7 @@ def pytest() -> tuple[bool, str, str]:
     return code == 0, last_line(out), details
 
 
-def lab(script: str, quick: bool) -> Callable[[], tuple[bool, str, str]]:
+def part(script: str, quick: bool) -> Callable[[], tuple[bool, str, str]]:
     def body() -> tuple[bool, str, str]:
         report = REPORTS / f"{Path(script).stem}.md"
         args = [PYTHON, script, "--out", str(report)] + (["--quick"] if quick else [])
@@ -146,7 +151,7 @@ def lab(script: str, quick: bool) -> Callable[[], tuple[bool, str, str]]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify")
-    parser.add_argument("--quick", action="store_true", help="short lab runs")
+    parser.add_argument("--quick", action="store_true", help="short challenge runs")
     parser.add_argument("--skip", action="append", default=[], help="gate name prefix to skip")
     args = parser.parse_args(argv)
     REPORTS.mkdir(parents=True, exist_ok=True)
@@ -155,7 +160,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ("mypy --strict", mypy),
         ("tests (unit, property, real server)", pytest),
     ]
-    plan += [(f"lab {name}", lab(script, args.quick)) for name, script in LABS]
+    plan += [(f"challenge {name}", part(script, args.quick)) for name, script in parts()]
     report = Report()
     for name, body in plan:
         if any(name.startswith(s) for s in args.skip):

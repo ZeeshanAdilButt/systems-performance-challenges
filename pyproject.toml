@@ -50,16 +50,18 @@ strict = true
 python_version = "3.12"
 explicit_package_bases = true
 cache_dir = ".cache/mypy"
-mypy_path = "labs/01-the-knee,labs/02-averages-lie,labs/03-tail-at-scale,labs/04-adaptive-hedging"
+mypy_path = "challenges/challenge-1-latency-under-load/part-1-the-knee,challenges/challenge-1-latency-under-load/part-2-averages-lie,challenges/challenge-1-latency-under-load/part-3-tail-at-scale,challenges/challenge-1-latency-under-load/part-4-adaptive-hedging"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 cache_dir = ".cache/pytest"
-# Each lab is a folder with one script in it, not a package: put the folders on the path
-# so a lab's test can import its script.
+# Each part of a challenge is a folder with one script in it, not a package: put the
+# folders on the path so a part's test can import its script.
 pythonpath = [
-    "labs/01-the-knee", "labs/02-averages-lie", "labs/03-tail-at-scale",
-    "labs/04-adaptive-hedging",
+    "challenges/challenge-1-latency-under-load/part-1-the-knee",
+    "challenges/challenge-1-latency-under-load/part-2-averages-lie",
+    "challenges/challenge-1-latency-under-load/part-3-tail-at-scale",
+    "challenges/challenge-1-latency-under-load/part-4-adaptive-hedging",
 ]
 norecursedirs = [".*", "*.egg", "build", "dist", "venv"]
 markers = [

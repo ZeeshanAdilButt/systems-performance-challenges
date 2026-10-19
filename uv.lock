@@ -8,14 +8,11 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "averages-lie",
     "jiffy-load",
     "jiffy-metrics",
     "jiffy-queueing",
     "jiffy-service",
-    "knee",
     "systems-performance-challenges",
-    "tail-at-scale",
 ]
 
 [[package]]
@@ -80,25 +77,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/66/83/6607060659998f00afdea0d8375c1e6e2b7d515ab905090d9a5a02f48851/ast_serialize-0.13.1-cp39-abi3-win32.whl", hash = "sha256:4f98da562e5901d69c7dd30885594c5438f859edf354e9ac7517d188fb026c3a", size = 1131889, upload-time = "2026-10-17T00:04:12.953Z" },
     { url = "https://files.pythonhosted.org/packages/9f/6f/bafd6490fe7b355627fabe95f4417e3d02da93102c8552550eb9a0774e1e/ast_serialize-0.13.1-cp39-abi3-win_amd64.whl", hash = "sha256:ddf7cbc9c8abf70102c4a088efe154bb86bfb825b0a10e556d2b15972cf99bd7", size = 1171153, upload-time = "2026-10-17T00:04:14.362Z" },
     { url = "https://files.pythonhosted.org/packages/11/25/4235f4b375a67a37ac595bf478a5407a744eaf7b64113c1c3a5432b8d954/ast_serialize-0.13.1-cp39-abi3-win_arm64.whl", hash = "sha256:48f11d96c9ec71119612f8e79a8c55c12f2b136716d68347433c561d27a25f43", size = 1139035, upload-time = "2026-10-17T00:04:15.767Z" },
-]
-
-[[package]]
-name = "averages-lie"
-version = "0.1.0"
-source = { editable = "challenges/02-averages-lie" }
-dependencies = [
-    { name = "jiffy-load" },
-    { name = "jiffy-metrics" },
-    { name = "jiffy-queueing" },
-    { name = "jiffy-service" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jiffy-load", editable = "packages/jiffy-load" },
-    { name = "jiffy-metrics", editable = "packages/jiffy-metrics" },
-    { name = "jiffy-queueing", editable = "packages/jiffy-queueing" },
-    { name = "jiffy-service", editable = "packages/jiffy-service" },
 ]
 
 [[package]]
@@ -198,22 +176,22 @@ wheels = [
 [[package]]
 name = "jiffy-load"
 version = "0.1.0"
-source = { editable = "packages/jiffy-load" }
+source = { editable = "toolkit/jiffy-load" }
 
 [[package]]
 name = "jiffy-metrics"
 version = "0.1.0"
-source = { editable = "packages/jiffy-metrics" }
+source = { editable = "toolkit/jiffy-metrics" }
 
 [[package]]
 name = "jiffy-queueing"
 version = "0.1.0"
-source = { editable = "packages/jiffy-queueing" }
+source = { editable = "toolkit/jiffy-queueing" }
 
 [[package]]
 name = "jiffy-service"
 version = "0.1.0"
-source = { editable = "packages/jiffy-service" }
+source = { editable = "toolkit/jiffy-service" }
 dependencies = [
     { name = "jiffy-load" },
     { name = "jiffy-metrics" },
@@ -221,27 +199,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jiffy-load", editable = "packages/jiffy-load" },
-    { name = "jiffy-metrics", editable = "packages/jiffy-metrics" },
-]
-
-[[package]]
-name = "knee"
-version = "0.1.0"
-source = { editable = "challenges/01-the-knee" }
-dependencies = [
-    { name = "jiffy-load" },
-    { name = "jiffy-metrics" },
-    { name = "jiffy-queueing" },
-    { name = "jiffy-service" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jiffy-load", editable = "packages/jiffy-load" },
-    { name = "jiffy-metrics", editable = "packages/jiffy-metrics" },
-    { name = "jiffy-queueing", editable = "packages/jiffy-queueing" },
-    { name = "jiffy-service", editable = "packages/jiffy-service" },
+    { name = "jiffy-load", editable = "toolkit/jiffy-load" },
+    { name = "jiffy-metrics", editable = "toolkit/jiffy-metrics" },
 ]
 
 [[package]]
@@ -499,13 +458,10 @@ name = "systems-performance-challenges"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "averages-lie" },
     { name = "jiffy-load" },
     { name = "jiffy-metrics" },
     { name = "jiffy-queueing" },
     { name = "jiffy-service" },
-    { name = "knee" },
-    { name = "tail-at-scale" },
 ]
 
 [package.dev-dependencies]
@@ -518,13 +474,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "averages-lie", editable = "challenges/02-averages-lie" },
-    { name = "jiffy-load", editable = "packages/jiffy-load" },
-    { name = "jiffy-metrics", editable = "packages/jiffy-metrics" },
-    { name = "jiffy-queueing", editable = "packages/jiffy-queueing" },
-    { name = "jiffy-service", editable = "packages/jiffy-service" },
-    { name = "knee", editable = "challenges/01-the-knee" },
-    { name = "tail-at-scale", editable = "challenges/03-tail-at-scale" },
+    { name = "jiffy-load", editable = "toolkit/jiffy-load" },
+    { name = "jiffy-metrics", editable = "toolkit/jiffy-metrics" },
+    { name = "jiffy-queueing", editable = "toolkit/jiffy-queueing" },
+    { name = "jiffy-service", editable = "toolkit/jiffy-service" },
 ]
 
 [package.metadata.requires-dev]
@@ -533,25 +486,6 @@ dev = [
     { name = "mypy", specifier = "==2.4.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.17.0" },
-]
-
-[[package]]
-name = "tail-at-scale"
-version = "0.1.0"
-source = { editable = "challenges/03-tail-at-scale" }
-dependencies = [
-    { name = "jiffy-load" },
-    { name = "jiffy-metrics" },
-    { name = "jiffy-queueing" },
-    { name = "jiffy-service" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jiffy-load", editable = "packages/jiffy-load" },
-    { name = "jiffy-metrics", editable = "packages/jiffy-metrics" },
-    { name = "jiffy-queueing", editable = "packages/jiffy-queueing" },
-    { name = "jiffy-service", editable = "packages/jiffy-service" },
 ]
 
 [[package]]

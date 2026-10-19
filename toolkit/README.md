@@ -1,79 +1,73 @@
-# How the reuse works
+# Toolkit
 
-Same rule as in [distributed-systems-challenges](https://github.com/ZeeshanAdilButt/distributed-systems-challenges):
-**challenges are disposable demonstrations, packages are the parts worth keeping.** A
-challenge answers one question and can be thrown away once you understand the answer. A
-package is something the next challenge, or a real project, will import.
+The shared tools every lab uses. A lab answers one question. A tool is something the
+next lab, or a real project, will reuse.
 
-## The layering
+| Tool | What it does, in plain words | Main code |
+|---|---|---|
+| [jiffy-service](jiffy-service) | The fake **server** (4 workers and a line), the **client** that talks to it, and helpers to run one experiment and collect both views | [server](jiffy-service/src/jiffy_service/server.py), [client](jiffy-service/src/jiffy_service/client.py), [experiment](jiffy-service/src/jiffy_service/experiment.py) |
+| [jiffy-load](jiffy-load) | The **load generator**: decides when each request is sent, sends it, and times it | [schedules](jiffy-load/src/jiffy_load/arrivals.py), [senders](jiffy-load/src/jiffy_load/runner.py) |
+| [jiffy-metrics](jiffy-metrics) | Turns raw timings into **p50/p99**, **busy %** and **queue length**, and prints tables | [percentiles](jiffy-metrics/src/jiffy_metrics/histogram.py), [busy % and queue](jiffy-metrics/src/jiffy_metrics/use.py), [tables](jiffy-metrics/src/jiffy_metrics/report.py) |
+| [jiffy-queueing](jiffy-queueing) | The **math** that predicts waiting before you measure, and a perfect **simulator** to compare against | [formulas](jiffy-queueing/src/jiffy_queueing/theory.py), [simulator](jiffy-queueing/src/jiffy_queueing/simulate.py) |
+
+## How they fit together
 
 ```
-challenges/01-the-knee      challenges/02-averages-lie      challenges/03-tail-at-scale
-          \                           |                              /
-           +---------------> jiffy-service <------------------------+
-                             (server, client, drive_open, calibrate)
-                              /                    \
-                     jiffy-load                  jiffy-metrics
-              (schedules, open/closed loop)  (histogram, USE recorder, tables)
+ labs/01-the-knee     labs/02-averages-lie     labs/03-tail-at-scale
+          \                    |                       /
+           +-------------> jiffy-service <------------+
+                          (server, client, run helpers)
+                            /                \
+                    jiffy-load            jiffy-metrics
+                 (send and time)      (p99, busy %, queue)
 
-            jiffy-queueing (theory and simulation; used directly by 01)
+                jiffy-queueing  (math and simulation, used by lab 01)
 ```
 
-Dependencies only point down. `jiffy-metrics`, `jiffy-load` and `jiffy-queueing` depend on
-nothing but the standard library. `jiffy-service` depends on those two because it *is*
-the lab bench: a server plus the code that drives it and reads both perspectives.
+Arrows only point down. `jiffy-metrics`, `jiffy-load` and `jiffy-queueing` use nothing
+but Python's standard library. `jiffy-service` uses the other two because it is the lab
+bench: a server plus the code that drives it and reads the results.
 
-## When code becomes a package
+## When code becomes a tool
 
-Code moves from a challenge into `packages/` when both are true:
+Code moves out of a lab and into `toolkit/` when both are true:
 
-1. **A second challenge needs it.** `calibrate` began inside challenge 01. It moved into
-   `jiffy-service` when 02 needed it too.
-2. **It has a contract you can test without the challenge.** The histogram's contract is
-   "every percentile within 1% of the truth", and a Hypothesis property checks it on
-   random data. The USE recorder's contract is checked against a fake clock. A function
-   that only makes sense inside one experiment stays in that experiment.
+1. **A second lab needs it.** `calibrate` began inside lab 01. It moved into
+   `jiffy-service` when lab 02 needed it too.
+2. **It can be tested on its own.** The percentile code promises "always within 1% of
+   the true answer", and a test checks that on thousands of random inputs. The busy %
+   code is checked against a fake clock. Code that only makes sense inside one experiment
+   stays in that lab.
 
-Some code was copied, not shared, on purpose. `tools/verify.py` started as a copy of the one in
-distributed-systems-challenges with the Postgres parts removed. Two repositories that
-each own their copy can evolve without coordinating. If a third repository needs the
-same gate runner, that is the signal to make it a package.
+## Each tool stands alone
 
-## Each package stands alone
+Every tool here has:
 
-Every package in `packages/` has:
-
-- a `src/` layout and a `py.typed` marker, and passes `mypy --strict`;
+- a `src/` folder and full type hints (checked with `mypy --strict`);
 - its own `tests/`, which run without anything else in the repository;
-- its own `pyproject.toml` and README, so it can be published or vendored on its own;
-- no third-party runtime dependencies.
+- its own `pyproject.toml` and README, so it can be installed on its own;
+- no third-party dependencies.
 
-## Using a package from another project
+## Using a tool in another project
 
-From a sibling checkout (editable, so changes show up immediately):
-
-```bash
-uv add --editable "../systems-performance-challenges/packages/jiffy-metrics"
-```
-
-From GitHub, pinned to a commit or tag:
+From a folder next to this one (changes show up immediately):
 
 ```bash
-uv add "jiffy-metrics @ git+https://github.com/ZeeshanAdilButt/systems-performance-challenges#subdirectory=packages/jiffy-metrics"
+uv add --editable "../systems-performance-challenges/toolkit/jiffy-metrics"
 ```
 
-Or with pip:
+From GitHub:
 
 ```bash
-pip install "git+https://github.com/ZeeshanAdilButt/systems-performance-challenges#subdirectory=packages/jiffy-metrics"
+uv add "jiffy-metrics @ git+https://github.com/ZeeshanAdilButt/systems-performance-challenges#subdirectory=toolkit/jiffy-metrics"
 ```
 
-## The other kind of reuse: connections
+## One connection, many requests
 
-The client keeps one TCP connection open and multiplexes every request over it.
-Requests carry an id, and replies come back in any order (`jiffy_service.protocol`).
-The other way, a connection per request, costs a handshake per call. On Windows it also
-runs out of ephemeral ports within seconds at a few hundred requests per second, because
-every closed socket sits in `TIME_WAIT` for minutes. Pooling or multiplexing connections
-does the same job as the worker pool: it pays a setup cost once and amortizes it over
-many requests.
+The client opens one network connection and sends every request over it. Each request
+carries a number, and the answer carries the same number back, so answers can arrive in
+any order ([protocol](jiffy-service/src/jiffy_service/protocol.py)). Opening a new
+connection per request would cost a handshake every time, and on Windows it runs out of
+connection ports within seconds at a few hundred requests per second. Reusing one
+connection pays the setup cost once, the same idea as keeping workers around instead of
+hiring one per customer.

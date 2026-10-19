@@ -2,92 +2,119 @@
 
 [![verify](https://github.com/ZeeshanAdilButt/systems-performance-challenges/actions/workflows/verify.yml/badge.svg)](https://github.com/ZeeshanAdilButt/systems-performance-challenges/actions/workflows/verify.yml)
 
-Small, runnable labs on what makes systems fast or slow: latency, utilization,
-saturation, queueing, and why the obvious numbers mislead. Each challenge takes one idea
-and runs it on your machine against a real server process, over real TCP. It puts the
-prediction (queueing theory), a perfect simulation of the same workload, and the
-measurement side by side, so you can see where they agree and where they don't.
+Small labs that answer one question each: **why does a system get slow, and how do you
+measure it without fooling yourself?** Every lab runs on your laptop in about a minute,
+against a real server, and every number it prints links back to the line of code that
+made it.
 
-This is a growing series. New challenges come at performance from different angles
-(CPU, memory, disk, network, the runtime, the kernel), go deeper as they go, and build
-their own tools when the existing ones can't show what matters.
+This is a growing series. Later labs will come at performance from other angles (CPU,
+memory, disk, network, the runtime) and build their own tools along the way.
 
-Everything is plain Python. No database, no Docker, and it runs the same on Windows,
-macOS and Linux.
+## The labs
 
-## Challenges
+| Lab | The question | One-line answer |
+|---|---|---|
+| [01 · The knee](labs/01-the-knee) | How busy can a server get before people notice? | About 75%. After that, waiting time shoots up. |
+| [02 · Averages lie](labs/02-averages-lie) | Can the graphs say "fine" while people wait? | Yes. Bursts hide inside averages, and some load tools miss most slow requests. |
+| [03 · Tail at scale](labs/03-tail-at-scale) | What if one page needs answers from 50 servers? | A rare slow server makes 40% of pages slow. Sending a backup copy of late calls fixes it. |
 
-| | Challenge | The question | What it shows |
-|---|---|---|---|
-| 01 | [The knee](challenges/01-the-knee) | How much busier can this service get before users notice? | p99 roughly quadruples between 70% and 96% busy. Theory, simulation and reality agree on the shape. |
-| 02 | [Averages lie](challenges/02-averages-lie) | Can the dashboard say "fine" while users wait? | Same 1-second utilization, 2x the p99 under bursts. A closed-loop load tool reports a fraction of the slow requests an open-loop one sees. |
-| 03 | [Tail at scale](challenges/03-tail-at-scale) | What happens when one request calls fifty backends? | A backend slow 1% of the time makes 40% of requests slow. Hedging takes that under 1% for ~2% extra calls. |
+Each lab is one folder with everything in it:
 
-Each challenge has its own README with the design, the measured results, and things to
-try.
-
-## Run it
-
-You need Python 3.12+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync --all-packages
-uv run knee              # about a minute
-uv run averages-lie      # about 45 seconds
-uv run tail-at-scale     # about a minute and a half
+```
+labs/01-the-knee/
+  README.md      start here: what it tests, from zero, with links into the code
+  knee.py        the whole experiment, top to bottom
+  results.md     what it measured last time it ran on this laptop
+  test_knee.py   checks that the experiment does what the README says
 ```
 
-Add `--quick` to any of them for a shorter run. Each prints its tables and writes a
-Markdown report to `reports/`.
+## 101: the words you need
 
-## Learn it
+You don't need any background. These are the only ideas the labs use.
 
-Start with [docs/mental-model.md](docs/mental-model.md). It defines each term
-(latency, service time, wait time, utilization, saturation, bottleneck) and points to the
-number in the output that shows it. Then run 01, 02 and 03 in that order. Each one
-builds on the vocabulary of the one before.
+- **Server**: a program that waits for requests and answers them. A website, an API, a
+  database. Ours is a small fake server that runs on your laptop
+  ([code](toolkit/jiffy-service/src/jiffy_service/server.py#L65)).
+- **Request**: one question sent to the server ("give me this page"). Ours just says "do
+  10 ms of work".
+- **Worker**: the part of the server that actually does the work. Our server has 4, so it
+  can work on 4 requests at the same time.
+- **Queue**: the line requests wait in when every worker is busy, like a supermarket
+  checkout.
+- **Latency**: how long someone waited for their answer, from the moment they asked to
+  the moment the answer arrived. Waiting in the queue plus the work itself. This is the
+  number people feel.
+- **p50, p99**: sort everyone's latency from fastest to slowest. p50 is the person in the
+  middle (the typical wait). p99 is the person 99% of the way down, so only 1 in 100
+  waited longer. The unhappy people are in the p99.
+- **Busy % (utilization)**: how much of the time the workers were working. 50% means they
+  were idle half the time.
+- **Throughput**: how many requests the server finished per second.
+- **Load generator**: a program that pretends to be lots of users sending requests. Ours
+  is in [toolkit/jiffy-load](toolkit/jiffy-load).
 
-## Packages
+A request's life, and where each of those times comes from:
 
-The parts worth reusing live in `packages/`. Each is small, typed (`mypy --strict`),
-tested on its own, and uses only the standard library. [docs/reuse.md](docs/reuse.md)
-explains the layering, and when code moves from a challenge into a package.
+```
+ you want an answer          the server reads it        a worker picks it up        answer arrives
+        |                           |                           |                           |
+        |------- network -----------|-------- queue ------------|-------- work -------------|
+        |                           |<-------- wait ----------->|<------- service --------->|
+        |<---------------------------------- latency ------------------------------------->|
+```
 
-| Package | What it is |
+## Run a lab
+
+You need Python 3.12+ and [uv](https://docs.astral.sh/uv/). From this folder:
+
+```bash
+uv sync
+uv run labs/01-the-knee/knee.py
+```
+
+Add `--quick` for a shorter run. The lab prints its tables and saves them to
+`results.md` in its folder.
+
+## How a lab works
+
+Every lab does the same four things:
+
+1. **Start the server** in its own process, so it behaves like a separate machine.
+2. **Measure first.** Ask the server how long "10 ms of work" really takes on this laptop
+   (it's never exactly 10).
+3. **Send load** on a fixed schedule, like real users who don't wait for each other.
+4. **Collect two views** of the same run, and print them side by side:
+   - the users' view: latency for every request;
+   - the server's view: how busy it was and how long its queue got.
+
+The interesting lessons are usually in the gap between those two views.
+
+## The toolkit
+
+The labs share four small tools, kept in [toolkit/](toolkit) so every lab (and any other
+project) can reuse them:
+
+| Tool | What it does |
 |---|---|
-| [jiffy-metrics](packages/jiffy-metrics) | A latency histogram with bounded error, and a USE recorder that turns exact transitions into utilization and saturation at any window width. |
-| [jiffy-load](packages/jiffy-load) | Open- and closed-loop load generation. Latency is measured from when each request was due, so coordinated omission cannot hide a stall. |
-| [jiffy-queueing](packages/jiffy-queueing) | M/M/c formulas (Erlang C, Little's law), and an exact FCFS simulator that replays any workload. |
-| [jiffy-service](packages/jiffy-service) | The server under test: a worker pool, one multiplexed connection, injected stalls, and helpers that collect the client's and the server's view of one run. |
+| [jiffy-service](toolkit/jiffy-service) | The fake server, the client that talks to it, and helpers to run one experiment |
+| [jiffy-load](toolkit/jiffy-load) | The load generator: sends requests on a schedule and times each one |
+| [jiffy-metrics](toolkit/jiffy-metrics) | Turns raw timings into p50/p99, busy % and queue length, and prints tables |
+| [jiffy-queueing](toolkit/jiffy-queueing) | The math that predicts latency before you measure it, plus a perfect simulator |
 
-## Verify everything
+## Check everything
 
 ```bash
-./verify            # lint, strict types, all tests, every challenge in full
-./verify --quick    # the same with short challenge runs (about two minutes)
+./verify            # lint, strict types, all tests, every lab
+./verify --quick    # the same with short lab runs
 ```
 
-On Windows, `./verify` works from Git Bash, or run `.\verify.ps1` in PowerShell. The
-summary lands in `reports/verify.md`. CI runs `./verify --quick` on Ubuntu and Windows on
-every push.
-
-## Layout
-
-```
-challenges/   one directory per challenge, each its own Python project
-packages/     the jiffy-* libraries
-docs/         the mental model, and how reuse works
-tools/        verify.py, the gates behind ./verify
-```
-
-The repository is a uv workspace: `uv sync --all-packages` installs every challenge and
-package in editable mode.
+On Windows, run `./verify` from Git Bash, or `.\verify.ps1` in PowerShell. CI runs
+`./verify --quick` on Ubuntu and Windows on every push.
 
 ## Related
 
 [distributed-systems-challenges](https://github.com/ZeeshanAdilButt/distributed-systems-challenges)
-works the same way for correctness under failure: leases, fencing, exactly-once effects,
-chaos. This repository is about speed under load.
+does the same for correctness: what goes wrong when machines crash, stall and retry.
 
 ## License
 

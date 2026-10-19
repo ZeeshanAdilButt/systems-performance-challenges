@@ -114,15 +114,7 @@ class Front:
     delay: float | None  # the hedge timer this page used
 
 
-def wait_until(futures: Sequence[Future[Reply]], deadline: float) -> None:
-    """Wait for every future or until ``deadline``. Short sleeps, not a lock timeout,
-    which Windows rounds up to ~21 ms (see lab 03)."""
-    while time.perf_counter() < deadline and not all(f.done() for f in futures):
-        time.sleep(0.0005)
-
-
 def fan_out(client: Client, seed: int, typical: float, hedger: Hedger) -> Front:
-    started = time.perf_counter()
     rng = random.Random(seed)  # one per page: every policy sees the same normal calls
     firsts: list[Future[Reply]] = [Future() for _ in range(K)]
     lock = threading.Lock()
@@ -144,28 +136,40 @@ def fan_out(client: Client, seed: int, typical: float, hedger: Hedger) -> Front:
 
         return done
 
-    def timed(f: Future[Reply]) -> None:
-        # From when the page started, the same clock the hedge timer runs on.
-        if f.exception() is None:
-            hedger.recent.record(time.perf_counter() - started)
+    def timed(sent: float) -> Callable[[Future[Reply]], None]:
+        def done(f: Future[Reply]) -> None:
+            if f.exception() is None:
+                hedger.recent.record(time.perf_counter() - sent)
 
+        return done
+
+    sent: list[float] = []
     for slot in firsts:
+        sent.append(time.perf_counter())
         call = client.work(backend_work(rng, typical))
-        call.add_done_callback(timed)
+        call.add_done_callback(timed(sent[-1]))
         call.add_done_callback(settle(slot, hedge=False))
     hedger.sent(K)
     delay = hedger.delay()
     hedges = denied = 0
-    if delay is not None:
-        wait_until(firsts, started + delay)
-        for slot in firsts:
-            if slot.done():
-                continue
-            if not hedger.allow():
+    # Each call has its own timer, started when it was sent. Every half millisecond, look
+    # at the calls still out: hedge each one that has been out longer than ``delay``, if
+    # the budget allows. Short sleeps, not a lock timeout, which Windows rounds up to
+    # about 21 ms (lab 03).
+    waiting = list(range(K)) if delay is not None else []
+    while delay is not None and waiting:
+        now = time.perf_counter()
+        late = [i for i in waiting if not firsts[i].done() and now >= sent[i] + delay]
+        for i in late:
+            if hedger.allow():
+                copy = client.work(backend_work(rng, typical))
+                copy.add_done_callback(settle(firsts[i], hedge=True))
+                hedges += 1
+            else:
                 denied += 1
-                continue
-            client.work(backend_work(rng, typical)).add_done_callback(settle(slot, hedge=True))
-            hedges += 1
+        waiting = [i for i in waiting if not firsts[i].done() and i not in late]
+        if waiting:
+            time.sleep(0.0005)
     wait_for(firsts)
     with lock:
         return Front(K + hedges, hedges, won, denied, delay)

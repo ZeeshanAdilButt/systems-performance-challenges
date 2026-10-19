@@ -10,8 +10,8 @@ not answered after 10 ms (well past its usual 2 ms), send the same call again an
 whichever answer comes first. It costs a few percent more backend calls and removes most
 of the tail.
 
-    uv run tail-at-scale            about a minute
-    uv run tail-at-scale --quick    about 25 seconds
+    uv run labs/03-tail-at-scale/tail_at_scale.py           about a minute and a half
+    uv run labs/03-tail-at-scale/tail_at_scale.py --quick   about 30 seconds
 """
 
 from __future__ import annotations
@@ -132,7 +132,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--quick", action="store_true", help="fewer front-end requests")
     parser.add_argument("--requests", type=int, help="front-end requests per fan-out")
     parser.add_argument("--seed", type=int, default=3)
-    parser.add_argument("--out", type=Path, default=Path("reports/03-tail-at-scale.md"))
+    parser.add_argument("--out", type=Path, default=Path(__file__).with_name("results.md"))
     args = parser.parse_args(argv)
     n = args.requests or (120 if args.quick else 300)
 

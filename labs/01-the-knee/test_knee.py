@@ -3,7 +3,7 @@ import random
 import pytest
 
 from jiffy_service import Client, Server
-from knee.run import duration_for, measure, theory_table
+from knee import duration_for, measure, theory_table
 
 
 def test_busier_points_run_longer() -> None:

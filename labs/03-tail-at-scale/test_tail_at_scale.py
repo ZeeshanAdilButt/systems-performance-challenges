@@ -5,7 +5,7 @@ from concurrent.futures import Future
 import pytest
 
 from jiffy_service import Client, Reply, Server
-from tail_at_scale.run import SLOW, SLOW_SHARE, backend_work, fan_out, wait_until
+from tail_at_scale import SLOW, SLOW_SHARE, backend_work, fan_out, wait_until
 
 
 def test_backend_is_slow_one_percent_of_the_time() -> None:

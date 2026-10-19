@@ -13,8 +13,8 @@ garbage collector). The same service is measured three ways:
 - by an open-loop load tool (requests go out on schedule, latency counted from when each
   was due).
 
-    uv run averages-lie            about 40 seconds
-    uv run averages-lie --quick    about 20 seconds
+    uv run labs/02-averages-lie/averages_lie.py           about 45 seconds
+    uv run labs/02-averages-lie/averages_lie.py --quick   about 20 seconds
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="averages-lie", description=__doc__.split("\n")[0])
     parser.add_argument("--quick", action="store_true", help="shorter runs")
     parser.add_argument("--seed", type=int, default=2)
-    parser.add_argument("--out", type=Path, default=Path("reports/02-averages-lie.md"))
+    parser.add_argument("--out", type=Path, default=Path(__file__).with_name("results.md"))
     args = parser.parse_args(argv)
     burst_seconds = 4.0 if args.quick else 8.0
     stall_seconds = 4.5 if args.quick else 9.0

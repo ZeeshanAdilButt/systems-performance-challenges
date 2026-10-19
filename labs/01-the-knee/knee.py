@@ -8,8 +8,8 @@ answers next to each other:
   through a perfect queue with no network, no scheduler and no Python;
 - **real**: what the client measured over TCP against a separate server process.
 
-    uv run knee            full sweep, about a minute
-    uv run knee --quick    four points, about fifteen seconds
+    uv run labs/01-the-knee/knee.py           full sweep, about a minute
+    uv run labs/01-the-knee/knee.py --quick   three load levels, about fifteen seconds
 """
 
 from __future__ import annotations
@@ -133,7 +133,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--quick", action="store_true", help="three points, shorter runs")
     parser.add_argument("--duration", type=float, help="base seconds per point")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--out", type=Path, default=Path("reports/01-the-knee.md"))
+    parser.add_argument("--out", type=Path, default=Path(__file__).with_name("results.md"))
     args = parser.parse_args(argv)
     targets = QUICK if args.quick else FULL
     base = args.duration or (2.5 if args.quick else 4.0)

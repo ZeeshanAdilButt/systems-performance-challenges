@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Every gate in one run: lint, strict types, tests, and every challenge.
-# tools/verify.py does the work and writes reports/.
+# tools/verify.py does the work and writes .cache/reports/.
 #
 #   ./verify            everything (about five minutes)
 #   ./verify --quick    shorter challenge runs (about two minutes)
@@ -17,7 +17,6 @@ python3 -m venv .venv
 if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
 "$PY" -m pip install --quiet --upgrade pip
 "$PY" -m pip install --quiet --group dev \
-  -e packages/jiffy-metrics -e packages/jiffy-load -e packages/jiffy-queueing \
-  -e packages/jiffy-service \
-  -e challenges/01-the-knee -e challenges/02-averages-lie -e challenges/03-tail-at-scale
+  -e toolkit/jiffy-metrics -e toolkit/jiffy-load -e toolkit/jiffy-queueing \
+  -e toolkit/jiffy-service
 exec "$PY" tools/verify.py "$@"

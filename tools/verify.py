@@ -1,10 +1,11 @@
 """Run every gate and print one report.
 
-    ./verify            everything: lint, types, tests, and every challenge in full
-    ./verify --quick    the challenges in their short form
+    ./verify            everything: lint, types, tests, and every lab in full
+    ./verify --quick    the labs in their short form
 
 Works the same on Windows, macOS and Linux: nothing here needs more than Python. Reports
-land in reports/: verify.md, plus one report per challenge.
+land in .cache/reports/: verify.md, plus one report per lab. (A lab run on its own writes
+results.md next to its script instead; verify leaves those alone.)
 """
 
 from __future__ import annotations
@@ -21,12 +22,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPORTS = ROOT / "reports"
+REPORTS = ROOT / ".cache" / "reports"
 PYTHON = sys.executable
-CHALLENGES = [
-    ("01 the knee", "knee"),
-    ("02 averages lie", "averages_lie"),
-    ("03 tail at scale", "tail_at_scale"),
+LABS = [
+    ("01 the knee", "labs/01-the-knee/knee.py"),
+    ("02 averages lie", "labs/02-averages-lie/averages_lie.py"),
+    ("03 tail at scale", "labs/03-tail-at-scale/tail_at_scale.py"),
 ]
 
 
@@ -91,9 +92,9 @@ def ruff() -> tuple[bool, str, str]:
 
 
 def mypy() -> tuple[bool, str, str]:
-    """One run per project: each package and challenge is checked on its own."""
-    groups = [[str(d / "src"), str(d / "tests")] for d in sorted(ROOT.glob("packages/*"))]
-    groups += [[str(d)] for d in sorted(ROOT.glob("challenges/*")) if d.is_dir()]
+    """One run per project: each toolkit package and each lab is checked on its own."""
+    groups = [[str(d / "src"), str(d / "tests")] for d in sorted(ROOT.glob("toolkit/jiffy-*"))]
+    groups += [[str(d)] for d in sorted(ROOT.glob("labs/*")) if d.is_dir()]
     groups.append([str(ROOT / "tools")])
     files = 0
     failures = []
@@ -109,7 +110,7 @@ def mypy() -> tuple[bool, str, str]:
 
 def pytest() -> tuple[bool, str, str]:
     junit = REPORTS / "pytest.xml"
-    code, out = run([PYTHON, "-m", "pytest", "-q", "-p", "no:cacheprovider", f"--junitxml={junit}"])
+    code, out = run([PYTHON, "-m", "pytest", "-q", f"--junitxml={junit}"])
     suites: dict[str, list[int]] = {}
     failures: list[str] = []
     for case in ET.parse(junit).getroot().iter("testcase"):
@@ -131,29 +132,29 @@ def pytest() -> tuple[bool, str, str]:
     return code == 0, last_line(out), details
 
 
-def challenge(module: str, quick: bool) -> Callable[[], tuple[bool, str, str]]:
+def lab(script: str, quick: bool) -> Callable[[], tuple[bool, str, str]]:
     def body() -> tuple[bool, str, str]:
-        report = REPORTS / f"{module}.md"
-        args = [PYTHON, "-m", module, "--out", str(report)] + (["--quick"] if quick else [])
+        report = REPORTS / f"{Path(script).stem}.md"
+        args = [PYTHON, script, "--out", str(report)] + (["--quick"] if quick else [])
         code, out = run(args)
         text = report.read_text(encoding="utf-8") if report.exists() else out[-3000:]
-        return code == 0, f"report in reports/{module}.md", text
+        return code == 0, f"report in .cache/reports/{report.name}", text
 
     return body
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify")
-    parser.add_argument("--quick", action="store_true", help="short challenge runs")
+    parser.add_argument("--quick", action="store_true", help="short lab runs")
     parser.add_argument("--skip", action="append", default=[], help="gate name prefix to skip")
     args = parser.parse_args(argv)
-    REPORTS.mkdir(exist_ok=True)
+    REPORTS.mkdir(parents=True, exist_ok=True)
     plan: list[tuple[str, Callable[[], tuple[bool, str, str]]]] = [
         ("ruff (lint and format)", ruff),
         ("mypy --strict", mypy),
         ("tests (unit, property, real server)", pytest),
     ]
-    plan += [(f"challenge {name}", challenge(module, args.quick)) for name, module in CHALLENGES]
+    plan += [(f"lab {name}", lab(script, args.quick)) for name, script in LABS]
     report = Report()
     for name, body in plan:
         if any(name.startswith(s) for s in args.skip):
@@ -164,7 +165,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     (REPORTS / "verify.md").write_text(text + "\n", encoding="utf-8")
     (REPORTS / "verify.json").write_text(json.dumps([asdict(g) for g in report.gates], indent=2))
     print("\n" + text)
-    print(f"\n{'ALL GATES PASSED' if report.passed else 'SOME GATES FAILED'} (reports/verify.md)")
+    verdict = "ALL GATES PASSED" if report.passed else "SOME GATES FAILED"
+    print(f"\n{verdict} (.cache/reports/verify.md)")
     return 0 if report.passed else 1
 
 

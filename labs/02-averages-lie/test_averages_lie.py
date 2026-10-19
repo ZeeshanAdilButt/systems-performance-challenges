@@ -1,6 +1,6 @@
 import pytest
 
-from averages_lie.run import ladder, microbursts
+from averages_lie import ladder, microbursts
 from jiffy_metrics import Histogram
 from jiffy_service import Client, Server
 

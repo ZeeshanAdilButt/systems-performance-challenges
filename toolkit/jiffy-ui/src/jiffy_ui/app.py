@@ -1,17 +1,17 @@
-"""The web server: one page, a list of labs, Run and Stop, and a stream of events.
+"""The web server: one page, a list of parts, Run and Stop, and a stream of events.
 
 Standard library only. The live charts use server-sent events: the page opens
 ``/api/events`` once and the server keeps writing ``event: point`` lines into that one
-response as the lab runs. Plain HTTP, one direction, nothing to install.
+response as the part runs. Plain HTTP, one direction, nothing to install.
 
     GET  /             the page
-    GET  /api/labs     the labs, as JSON
-    POST /api/run      {"lab": "01-the-knee", "quick": true}
+    GET  /api/parts     the parts, as JSON
+    POST /api/run      {"part": "challenge-1-latency-under-load/part-1-the-knee", "quick": true}
     POST /api/stop
     GET  /api/events   the event stream: run, step, slow, point, use, log, done
 
 It only answers on 127.0.0.1, and only to requests addressed to this machine by name,
-so a web page you happen to visit can't start labs on it.
+so a web page you happen to visit can't start parts on it.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from jiffy_ui.board import Hub
-from jiffy_ui.labs import Lab, find_labs
+from jiffy_ui.parts import Part, find_parts
 from jiffy_ui.runner import BusyError, Runner
 
 KEEPALIVE = 10.0  # seconds between comment lines on a quiet event stream
@@ -38,7 +38,7 @@ class Dashboard(ThreadingHTTPServer):
     def __init__(self, root: Path, port: int = 0) -> None:
         super().__init__(("127.0.0.1", port), Handler)
         self.root = root
-        self.labs: dict[str, Lab] = {lab.id: lab for lab in find_labs(root)}
+        self.parts: dict[str, Part] = {part.id: part for part in find_parts(root)}
         self.hub = Hub()
         self.runner = Runner(root, self.hub)
         self.page = resources.files("jiffy_ui").joinpath("page.html").read_bytes()
@@ -64,12 +64,12 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/":
             self._send(200, self.server.page, "text/html; charset=utf-8")
-        elif path == "/api/labs":
-            labs = [
-                {**asdict(lab), "script": lab.script.relative_to(self.server.root).as_posix()}
-                for lab in self.server.labs.values()
+        elif path == "/api/parts":
+            parts = [
+                {**asdict(part), "script": part.script.relative_to(self.server.root).as_posix()}
+                for part in self.server.parts.values()
             ]
-            self._json(200, {"labs": labs, "running": self.server.runner.running})
+            self._json(200, {"parts": parts, "running": self.server.runner.running})
         elif path == "/api/events":
             self._events()
         else:
@@ -90,12 +90,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path == "/api/run":
-            lab = self.server.labs.get(str(body.get("lab")))
-            if lab is None:
-                self._json(404, {"error": f"no lab {body.get('lab')!r}"})
+            part = self.server.parts.get(str(body.get("part")))
+            if part is None:
+                self._json(404, {"error": f"no part {body.get('part')!r}"})
                 return
             try:
-                self.server.runner.start(lab, bool(body.get("quick", True)))
+                self.server.runner.start(part, bool(body.get("quick", True)))
             except BusyError as exc:
                 self._json(409, {"error": str(exc)})
                 return

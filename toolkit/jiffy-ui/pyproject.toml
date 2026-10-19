@@ -1,12 +1,12 @@
 [project]
 name = "jiffy-ui"
 version = "0.1.0"
-description = "A local dashboard: run a lab and watch its latency, busy % and queue as live charts."
+description = "A local dashboard: run a part and watch its latency, busy % and queue as live charts."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "Zeeshan Adil", email = "zeeabutt@outlook.com" }]
-keywords = ["dashboard", "server-sent-events", "performance", "lab"]
+keywords = ["dashboard", "server-sent-events", "performance", "part"]
 classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",

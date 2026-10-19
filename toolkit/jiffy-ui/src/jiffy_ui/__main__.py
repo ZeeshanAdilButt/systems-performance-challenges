@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from jiffy_ui.app import Dashboard
-from jiffy_ui.labs import find_root
+from jiffy_ui.parts import find_root
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -22,7 +22,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         dashboard = Dashboard(root, args.port)
     except OSError:  # that port is taken, perhaps by another dashboard: take any
         dashboard = Dashboard(root, 0)
-    print(f"lab dashboard on {dashboard.url}  (Ctrl+C to stop)", flush=True)
+    print(f"challenge dashboard on {dashboard.url}  (Ctrl+C to stop)", flush=True)
     if not args.no_browser:
         webbrowser.open(dashboard.url)
     try:

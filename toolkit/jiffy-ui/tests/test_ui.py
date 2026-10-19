@@ -1,4 +1,4 @@
-"""The dashboard's parts on their own, then the whole thing against a tiny fake lab."""
+"""The dashboard's parts on their own, then the whole thing against a tiny fake part."""
 
 import json
 import textwrap
@@ -11,11 +11,11 @@ from typing import Any
 
 import pytest
 
-from jiffy_ui import Board, Dashboard, Hub, find_labs, find_root
+from jiffy_ui import Board, Dashboard, Hub, find_parts, find_root
 
 REPO = Path(__file__).resolve().parents[3]
 
-FAKE_LAB = """
+FAKE_PART = """
     import argparse
     import time
     from dataclasses import dataclass
@@ -40,7 +40,7 @@ FAKE_LAB = """
         live.record(Done(0.05 if i % 10 == 0 else 0.01))
     live.send({"kind": "use", "busy": 0.5, "queue": 1.0, "max_queue": 3})
     time.sleep(0.8)
-    args.out.write_text("# Fake lab: results\\n\\n| a | b |\\n|---|---|\\n| 1 | 2 |\\n")
+    args.out.write_text("# Fake part: results\\n\\n| a | b |\\n|---|---|\\n| 1 | 2 |\\n")
 """
 
 
@@ -52,13 +52,16 @@ class FakeClock:
         return self.now
 
 
-def test_finds_the_real_labs_with_their_titles_and_questions() -> None:
-    labs = {lab.id: lab for lab in find_labs(REPO)}
-    knee = labs["01-the-knee"]
-    assert knee.title == "Lab 01 · The knee"
+CHALLENGE = "challenge-1-latency-under-load"
+
+
+def test_finds_the_real_parts_with_their_titles_and_questions() -> None:
+    parts = {part.id: part for part in find_parts(REPO)}
+    knee = parts[f"{CHALLENGE}/part-1-the-knee"]
+    assert knee.title == "Part 1 · The knee"
     assert knee.question.startswith("how busy can a server get")
     assert knee.script.name == "knee.py"
-    assert {"02-averages-lie", "03-tail-at-scale"} <= labs.keys()
+    assert {f"{CHALLENGE}/part-2-averages-lie", f"{CHALLENGE}/part-3-tail-at-scale"} <= parts.keys()
 
 
 def test_finds_the_repository_from_inside_it() -> None:
@@ -93,23 +96,26 @@ def test_server_reports_go_straight_through() -> None:
 
 def test_a_tab_that_connects_late_catches_up_on_this_run_only() -> None:
     hub = Hub()
-    hub.publish("run", {"lab": "old"}, fresh=True)
-    hub.publish("run", {"lab": "new"}, fresh=True)
+    hub.publish("run", {"part": "old"}, fresh=True)
+    hub.publish("run", {"part": "new"}, fresh=True)
     hub.publish("step", {"text": "go"})
     tab = hub.subscribe()
     caught_up = [tab.get_nowait() for _ in range(2)]
-    assert caught_up == [("run", {"lab": "new"}), ("step", {"text": "go"})]
+    assert caught_up == [("run", {"part": "new"}), ("step", {"text": "go"})]
     hub.publish("point", {"t": 1})
     assert tab.get_nowait() == ("point", {"t": 1})
     hub.unsubscribe(tab)
 
 
+FAKE_ID = "challenge-9-fake/part-1-fake"
+
+
 @pytest.fixture
 def dashboard(tmp_path: Path) -> Iterator[Dashboard]:
-    folder = tmp_path / "labs" / "99-fake"
+    folder = tmp_path / "challenges" / FAKE_ID
     folder.mkdir(parents=True)
-    (folder / "fake.py").write_text(textwrap.dedent(FAKE_LAB), encoding="utf-8")
-    readme = "# Lab 99 · Fake\n\n**Question:** does it work?\n"
+    (folder / "fake.py").write_text(textwrap.dedent(FAKE_PART), encoding="utf-8")
+    readme = "# Part 1 · Fake\n\n**Question:** does it work?\n"
     (folder / "README.md").write_text(readme, encoding="utf-8")
     board = Dashboard(tmp_path, 0)
     threading.Thread(target=board.serve_forever, daemon=True).start()
@@ -125,20 +131,20 @@ def call(url: str, body: object = None, content_type: str = "application/json") 
         return json.load(response)
 
 
-def test_only_json_posts_start_a_lab(dashboard: Dashboard) -> None:
+def test_only_json_posts_start_a_part(dashboard: Dashboard) -> None:
     with pytest.raises(urllib.error.HTTPError) as refused:
-        call(dashboard.url + "api/run", {"lab": "99-fake"}, "text/plain")
+        call(dashboard.url + "api/run", {"part": FAKE_ID}, "text/plain")
     assert refused.value.code == 415
     with pytest.raises(urllib.error.HTTPError) as missing:
-        call(dashboard.url + "api/run", {"lab": "nope"})
+        call(dashboard.url + "api/run", {"part": "nope"})
     assert missing.value.code == 404
 
 
 @pytest.mark.slow
-def test_runs_a_lab_and_streams_it_to_the_page(dashboard: Dashboard) -> None:
-    labs = call(dashboard.url + "api/labs")["labs"]
-    assert [(lab["id"], lab["title"]) for lab in labs] == [("99-fake", "Lab 99 · Fake")]
-    assert call(dashboard.url + "api/run", {"lab": "99-fake", "quick": True}) == {"ok": True}
+def test_runs_a_part_and_streams_it_to_the_page(dashboard: Dashboard) -> None:
+    parts = call(dashboard.url + "api/parts")["parts"]
+    assert [(part["id"], part["title"]) for part in parts] == [(FAKE_ID, "Part 1 · Fake")]
+    assert call(dashboard.url + "api/run", {"part": FAKE_ID, "quick": True}) == {"ok": True}
     events: dict[str, list[dict[str, Any]]] = {}
     with urllib.request.urlopen(dashboard.url + "api/events", timeout=15) as stream:
         name = ""
@@ -150,7 +156,7 @@ def test_runs_a_lab_and_streams_it_to_the_page(dashboard: Dashboard) -> None:
                 events.setdefault(name, []).append(json.loads(line[len("data: ") :]))
                 if name == "done":
                     break
-    command = "uv run labs/99-fake/fake.py --out .cache/ui/fake.md --quick"
+    command = f"uv run challenges/{FAKE_ID}/fake.py --out .cache/ui/fake.md --quick"
     assert events["run"][0]["command"] == command
     assert events["slow"] == [{"above": 0.02}]
     assert [s["text"] for s in events["step"]] == ["warming up ..."]
@@ -161,4 +167,4 @@ def test_runs_a_lab_and_streams_it_to_the_page(dashboard: Dashboard) -> None:
     assert {"line": "  warming up ..."} in events["log"]
     done = events["done"][0]
     assert (done["code"], done["stopped"]) == (0, False)
-    assert done["report"].startswith("# Fake lab: results")
+    assert done["report"].startswith("# Fake part: results")

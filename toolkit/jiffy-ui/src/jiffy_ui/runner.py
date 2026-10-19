@@ -1,12 +1,12 @@
-"""Run one lab at a time, exactly as you would from a terminal, and listen to its feed.
+"""Run one part at a time, exactly as you would from a terminal, and listen to its feed.
 
-The lab is started as its own process (``python labs/.../knee.py --quick --out ...``)
-with ``JIFFY_LIVE`` pointing at a socket here. Nothing about the lab changes: it measures
+The part is started as its own process (``python parts/.../knee.py --quick --out ...``)
+with ``JIFFY_LIVE`` pointing at a socket here. Nothing about the part changes: it measures
 the same way and prints the same tables. Three streams come back:
 
 - its live feed (see ``jiffy_metrics.live``), folded into chart points by ``Board``;
 - its printed output, line by line, for the log;
-- its report, read from ``.cache/ui/<lab>.md`` when it finishes.
+- its report, read from ``.cache/ui/<part>.md`` when it finishes.
 """
 
 from __future__ import annotations
@@ -24,11 +24,11 @@ from pathlib import Path
 
 from jiffy_metrics import live
 from jiffy_ui.board import TICK, Board, Hub
-from jiffy_ui.labs import Lab
+from jiffy_ui.parts import Part
 
 
 class BusyError(RuntimeError):
-    """A lab is already running."""
+    """A part is already running."""
 
 
 class Runner:
@@ -47,17 +47,17 @@ class Runner:
     def running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
 
-    def report_path(self, lab: Lab) -> Path:
-        return self.root / ".cache" / "ui" / f"{lab.script.stem}.md"
+    def report_path(self, part: Part) -> Path:
+        return self.root / ".cache" / "ui" / f"{part.script.stem}.md"
 
-    def start(self, lab: Lab, quick: bool) -> None:
+    def start(self, part: Part, quick: bool) -> None:
         with self._lock:
             if self.running:
-                raise BusyError("a lab is already running")
-            out = self.report_path(lab)
+                raise BusyError("a part is already running")
+            out = self.report_path(part)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.unlink(missing_ok=True)  # an old report must not pass for this run's
-            script = lab.script.relative_to(self.root).as_posix()
+            script = part.script.relative_to(self.root).as_posix()
             args = [script, "--out", out.relative_to(self.root).as_posix()]
             args += ["--quick"] if quick else []
             host, port = self.feed_address
@@ -71,8 +71,8 @@ class Runner:
             self.hub.publish(
                 "run",
                 {
-                    "lab": lab.id,
-                    "title": lab.title,
+                    "part": part.id,
+                    "title": part.title,
                     "quick": quick,
                     "command": "uv run " + " ".join(args),
                     "slow": board.slow,
@@ -90,7 +90,7 @@ class Runner:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                # On Linux and macOS, its own process group, so Stop can end the lab and
+                # On Linux and macOS, its own process group, so Stop can end the part and
                 # the server it started together.
                 start_new_session=sys.platform != "win32",
             )
@@ -106,7 +106,7 @@ class Runner:
         _kill_tree(proc)
 
     def _watch(self, proc: subprocess.Popen[str], board: Board, out: Path) -> None:
-        """One point every TICK while the lab runs; then the last point and the report."""
+        """One point every TICK while the part runs; then the last point and the report."""
         printer = threading.Thread(target=self._print, args=(proc,), daemon=True)
         printer.start()
         while proc.poll() is None:
@@ -140,7 +140,7 @@ class Runner:
             threading.Thread(target=self._listen, args=(conn,), daemon=True).start()
 
     def _listen(self, conn: socket.socket) -> None:
-        """One connection: the lab's or its server's. One JSON object per line."""
+        """One connection: the part's or its server's. One JSON object per line."""
         with conn, conn.makefile("rb") as stream:
             try:
                 for line in stream:
@@ -159,7 +159,7 @@ class Runner:
 
 
 def _kill_tree(proc: subprocess.Popen[str]) -> None:
-    """End the lab and every process it started (its server)."""
+    """End the part and every process it started (its server)."""
     if sys.platform == "win32":
         subprocess.run(
             ["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True, check=False

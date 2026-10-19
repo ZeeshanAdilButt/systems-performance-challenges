@@ -1,8 +1,8 @@
-"""Turn the lab's live feed into chart points, and hand every event to every open tab.
+"""Turn the part's live feed into chart points, and hand every event to every open tab.
 
 The feed (``jiffy_metrics.live``) carries two kinds of numbers:
 
-- latencies, in batches from the lab every 100 ms. Ten requests are too few for a p99, so
+- latencies, in batches from the part every 100 ms. Ten requests are too few for a p99, so
   ``Board`` piles them up and every ``TICK`` seconds boils the pile down to one point:
   p50 and p99 with the toolkit's ``Histogram``, and the share of slow requests;
 - busy % and queue length, from the server every 100 ms. Those go straight to the page,
@@ -20,7 +20,7 @@ from typing import Any
 from jiffy_metrics import Histogram
 
 TICK = 0.5  # seconds per chart point
-DEFAULT_SLOW = 0.050  # what counts as slow until the lab says otherwise
+DEFAULT_SLOW = 0.050  # what counts as slow until the part says otherwise
 
 Event = tuple[str, dict[str, Any]]
 

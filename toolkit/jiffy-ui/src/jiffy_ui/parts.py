@@ -1,7 +1,8 @@
-"""Find the labs: every folder in ``labs/`` with exactly one script that isn't a test.
+"""Find the parts: every ``challenges/challenge-*/part-*/`` folder with exactly one script
+that isn't a test.
 
-The title and the question come from the lab's own README, so a new lab shows up on the
-dashboard without touching this code.
+The title and the question come from the part's own README, so a new part (or a whole new
+challenge) shows up on the dashboard without touching this code.
 """
 
 from __future__ import annotations
@@ -11,27 +12,30 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
-class Lab:
-    id: str  # the folder name, "01-the-knee"
-    title: str  # the README's first heading, "Lab 01 · The knee"
+class Part:
+    id: str  # "challenge-1-latency-under-load/part-1-the-knee"
+    title: str  # the README's first heading, "Part 1 · The knee"
     question: str  # the README's **Question:** line
     script: Path
 
 
 def find_root(start: Path) -> Path:
-    """The repository: the first folder, from ``start`` upwards, that has a ``labs/``."""
+    """The repository: the first folder, from ``start`` upwards, with a ``challenges/``."""
     for folder in [start, *start.parents]:
-        if (folder / "labs").is_dir():
+        if (folder / "challenges").is_dir():
             return folder
-    raise FileNotFoundError(f"no labs/ folder in {start} or above it")
+    raise FileNotFoundError(f"no challenges/ folder in {start} or above it")
 
 
-def find_labs(root: Path) -> list[Lab]:
-    labs = []
-    for folder in sorted(p for p in (root / "labs").iterdir() if p.is_dir()):
+def find_parts(root: Path) -> list[Part]:
+    parts = []
+    for folder in sorted(root.glob("challenges/challenge-*/part-*")):
+        if not folder.is_dir():
+            continue
         scripts = [p for p in folder.glob("*.py") if not p.name.startswith("test_")]
         if len(scripts) != 1:
             continue
+        part_id = f"{folder.parent.name}/{folder.name}"
         title, question = folder.name, ""
         readme = folder / "README.md"
         if readme.exists():
@@ -41,5 +45,5 @@ def find_labs(root: Path) -> list[Lab]:
                 elif line.startswith("**Question:**"):
                     question = line.removeprefix("**Question:**").strip()
                     break
-        labs.append(Lab(folder.name, title, question, scripts[0]))
-    return labs
+        parts.append(Part(part_id, title, question, scripts[0]))
+    return parts

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lab dashboard</title>
+<title>Challenge dashboard</title>
 <style>
 :root {
   color-scheme: light;
@@ -70,16 +70,16 @@ h1 { font-size: 22px; margin: 0 0 4px; }
   border-radius: 10px;
   padding: 16px;
 }
-.labs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
-.lab {
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.part {
   display: block; cursor: pointer; padding: 12px 14px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--page);
 }
-.lab:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.lab input { position: absolute; opacity: 0; pointer-events: none; }
-.lab strong { display: block; }
-.lab span { color: var(--ink-2); font-size: 13px; }
-.lab:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.part:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.part input { position: absolute; opacity: 0; pointer-events: none; }
+.part strong { display: block; }
+.part span { color: var(--ink-2); font-size: 13px; }
+.part:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
 button {
   font: inherit; font-weight: 600; padding: 8px 18px; border-radius: 8px; cursor: pointer;
@@ -143,15 +143,15 @@ pre.log {
 </head>
 <body>
 <main>
-  <h1>Lab dashboard</h1>
+  <h1>Challenge dashboard</h1>
   <p class="lede">
-    Pick a lab and press Run. The lab runs exactly as it does in a terminal. While it
+    Pick a part and press Run. The part runs exactly as it does in a terminal. While it
     measures, it sends every finished request here, and the server reports how busy it is
     ten times a second, so you can watch the numbers move instead of waiting for the tables.
   </p>
 
   <div class="card">
-    <div class="labs" id="labs" role="radiogroup" aria-label="Lab"></div>
+    <div class="parts" id="parts" role="radiogroup" aria-label="Part"></div>
     <div class="controls">
       <button class="primary" id="run">Run</button>
       <button id="stop" disabled>Stop</button>
@@ -165,10 +165,10 @@ pre.log {
   <section class="below">
     <div class="card">
       <h3>Steps</h3>
-      <ol class="steps" id="steps"><li class="hint">The lab's steps appear here, numbered like the dashed lines on the charts.</li></ol>
+      <ol class="steps" id="steps"><li class="hint">The part's steps appear here, numbered like the dashed lines on the charts.</li></ol>
     </div>
     <div class="card">
-      <h3>What the lab printed</h3>
+      <h3>What the part printed</h3>
       <pre class="log" id="log"></pre>
     </div>
   </section>
@@ -214,7 +214,7 @@ const CHARTS = [
   {
     id: "slow",
     title: () => `Slow requests: share over ${fmtMs(state.slow * 1000)}`,
-    explain: "Out of the requests that finished in each half second, how many took longer than the lab's \"slow\" line.",
+    explain: "Out of the requests that finished in each half second, how many took longer than the part's \"slow\" line.",
     source: "points",
     unit: "%",
     max: 100,
@@ -222,8 +222,8 @@ const CHARTS = [
   },
 ];
 
-// points: one per half second, from the lab's latencies. use: one per server report.
-const state = { labs: [], running: false, points: [], use: [], steps: [], slow: 0.05, title: "", command: "" };
+// points: one per half second, from the part's latencies. use: one per server report.
+const state = { parts: [], running: false, points: [], use: [], steps: [], slow: 0.05, title: "", command: "" };
 const USE_GAP = 0.3; // seconds without a server report that break its line
 const $ = (id) => document.getElementById(id);
 
@@ -327,7 +327,7 @@ function draw(c) {
     }
   }
   if (!state[c.source].length) {
-    parts.push(`<text class="empty" x="${(g.W + g.m.l) / 2}" y="${g.H / 2}" text-anchor="middle">${state.running ? "waiting for the first numbers…" : "pick a lab and press Run"}</text>`);
+    parts.push(`<text class="empty" x="${(g.W + g.m.l) / 2}" y="${g.H / 2}" text-anchor="middle">${state.running ? "waiting for the first numbers…" : "pick a part and press Run"}</text>`);
   }
   svg.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
   svg.setAttribute("aria-label", c.title());
@@ -365,12 +365,12 @@ function redraw() {
   requestAnimationFrame(() => { pending = false; CHARTS.forEach(draw); });
 }
 
-/* ---------- labs, run, stop ---------- */
+/* ---------- parts, run, stop ---------- */
 
 function renderLabs() {
-  $("labs").innerHTML = state.labs.map((l, i) => `
-    <label class="lab">
-      <input type="radio" name="lab" value="${esc(l.id)}" ${i === 0 ? "checked" : ""}>
+  $("parts").innerHTML = state.parts.map((l, i) => `
+    <label class="part">
+      <input type="radio" name="part" value="${esc(l.id)}" ${i === 0 ? "checked" : ""}>
       <strong>${esc(l.title)}</strong>
       <span>${esc(l.question)}</span>
     </label>`).join("");
@@ -380,7 +380,7 @@ function setRunning(running) {
   state.running = running;
   $("run").disabled = running;
   $("stop").disabled = !running;
-  for (const input of document.querySelectorAll("input[name=lab], #quick")) input.disabled = running;
+  for (const input of document.querySelectorAll("input[name=part], #quick")) input.disabled = running;
 }
 
 function status(html) { $("status").innerHTML = html; }
@@ -391,8 +391,8 @@ async function post(path, body) {
 }
 
 $("run").addEventListener("click", () => {
-  const lab = document.querySelector("input[name=lab]:checked");
-  if (lab) post("/api/run", { lab: lab.value, quick: $("quick").checked });
+  const part = document.querySelector("input[name=part]:checked");
+  if (part) post("/api/run", { part: part.value, quick: $("quick").checked });
 });
 $("stop").addEventListener("click", () => post("/api/stop"));
 
@@ -458,7 +458,7 @@ function listen() {
     $("log").textContent = "";
     $("steps").innerHTML = "";
     $("report").hidden = true;
-    const radio = document.querySelector(`input[name=lab][value="${CSS.escape(d.lab)}"]`);
+    const radio = document.querySelector(`input[name=part][value="${CSS.escape(d.part)}"]`);
     if (radio) radio.checked = true;
     $("quick").checked = d.quick;
     setRunning(true);
@@ -498,9 +498,9 @@ function listen() {
 
 async function start() {
   buildCharts();
-  const r = await fetch("/api/labs");
+  const r = await fetch("/api/parts");
   const d = await r.json();
-  state.labs = d.labs;
+  state.parts = d.parts;
   renderLabs();
   setRunning(d.running);
   redraw();

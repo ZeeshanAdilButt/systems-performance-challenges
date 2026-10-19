@@ -31,3 +31,20 @@ closed = closed_loop(users=4, duration=5, call=lambda i: client.call(i), think=0
 
 The target can be anything that returns a `concurrent.futures.Future`: an HTTP client
 wrapped in an executor, a gRPC future, or `jiffy_service.Client.work`.
+
+## HedgeBudget
+
+A cap on extra calls, for hedges or retries. Every normal call earns `ratio` of a token;
+every extra call spends a whole one and is refused when there isn't one. At `ratio=0.05`,
+20 normal calls earn one extra call, so extra calls never pass 5% of normal calls, however
+badly the timer asking for them misbehaves. `max_saved` caps how many a quiet spell can
+bank.
+
+```python
+from jiffy_load import HedgeBudget
+
+budget = HedgeBudget(ratio=0.05, max_saved=10)
+budget.earn(calls=50)  # sent 50 normal calls
+if budget.spend():  # may one extra call go out?
+    send_hedge()
+```

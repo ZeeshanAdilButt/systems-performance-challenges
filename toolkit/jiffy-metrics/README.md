@@ -19,6 +19,22 @@ print(ms(h.percentile(99)), h.fraction_above(0.050))
 s = h.summary()  # count, mean, p50, p90, p99, p999, max
 ```
 
+## RollingPercentile
+
+The percentile of the **last** `size` values only. A `Histogram` remembers everything,
+which is right for a report. A timer that should follow the system, like "hedge a call
+once it is later than 95% of recent calls", needs to forget: when latency drifts up, the
+old quiet values drop out and the answer moves with it. Exact (no buckets) and safe to
+share between threads.
+
+```python
+from jiffy_metrics import RollingPercentile
+
+recent = RollingPercentile(size=1000)
+recent.record(latency)  # seconds, from any thread
+hedge_after = recent.percentile(95)
+```
+
 ## UseRecorder
 
 Tell it about every transition: work arrived (`enqueued`), a worker took it (`started`),

@@ -17,11 +17,12 @@ The three numbers are the USE method:
 
 from __future__ import annotations
 
+import bisect
 import math
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -111,45 +112,24 @@ class UseRecorder:
             events = list(self._events)
             start = self._start
             now = self._clock()
-        end = now if end is None else end
-        span = end - start
-        n = max(1, math.ceil(span / width - 1e-9))
-        busy_area = [0.0] * n
-        queue_area = [0.0] * n
-        saturated = [0.0] * n
-        max_queue = [0] * n
-        # The state is constant between two events: walk each of those segments and
-        # spread it over the windows it crosses.
-        for k, (t, busy, queued) in enumerate(events):
-            seg_start = max(t, start)
-            seg_end = min(events[k + 1][0] if k + 1 < len(events) else end, end)
-            w = min(n - 1, int((seg_start - start) // width))
-            while seg_start < seg_end and w < n:
-                piece_end = min(seg_end, start + (w + 1) * width)
-                dt = piece_end - seg_start
-                if dt > 0:
-                    busy_area[w] += busy * dt
-                    queue_area[w] += queued * dt
-                    if queued and busy >= self.capacity:
-                        saturated[w] += dt
-                    max_queue[w] = max(max_queue[w], queued)
-                seg_start = piece_end
-                w += 1
-        out = []
-        for w in range(n):
-            w_start = start + w * width
-            length = max(min(width, end - w_start), 1e-12)
-            out.append(
-                Window(
-                    start=w_start - start,
-                    length=length,
-                    utilization=busy_area[w] / (self.capacity * length),
-                    mean_queue=queue_area[w] / length,
-                    max_queue=max_queue[w],
-                    saturated_time=saturated[w],
-                )
-            )
-        return out
+        return _walk(events, start, now if end is None else end, width, self.capacity)
+
+    def recent(self, width: float) -> Window:
+        """Just the last ``width`` seconds, up to now. A live dashboard asks for this ten
+        times a second, so it only looks at the events inside that stretch, not the
+        whole run. ``start`` is counted from the last reset, as in ``windows``."""
+        if width <= 0:
+            raise ValueError("window width must be positive")
+        with self._lock:
+            now = self._clock()
+            since = max(self._start, now - width)
+            # The last event at or before ``since`` gives the state the stretch opens in.
+            first = bisect.bisect_right(self._events, since, key=lambda e: e[0]) - 1
+            events = self._events[max(first, 0) :]
+            start = self._start
+        length = max(now - since, 1e-9)
+        (window,) = _walk(events, since, since + length, length, self.capacity)
+        return replace(window, start=since - start)
 
     def summary(self, width: float, end: float | None = None) -> UseSummary:
         ws = self.windows(width, end)
@@ -164,3 +144,47 @@ class UseRecorder:
             max_queue=max(w.max_queue for w in ws),
             errors=self.errors,
         )
+
+
+def _walk(
+    events: list[tuple[float, int, int]], start: float, end: float, width: float, capacity: int
+) -> list[Window]:
+    """Cut ``start..end`` into windows of ``width`` and work out each one from the events."""
+    span = end - start
+    n = max(1, math.ceil(span / width - 1e-9))
+    busy_area = [0.0] * n
+    queue_area = [0.0] * n
+    saturated = [0.0] * n
+    max_queue = [0] * n
+    # The state is constant between two events: walk each of those segments and
+    # spread it over the windows it crosses.
+    for k, (t, busy, queued) in enumerate(events):
+        seg_start = max(t, start)
+        seg_end = min(events[k + 1][0] if k + 1 < len(events) else end, end)
+        w = min(n - 1, int((seg_start - start) // width))
+        while seg_start < seg_end and w < n:
+            piece_end = min(seg_end, start + (w + 1) * width)
+            dt = piece_end - seg_start
+            if dt > 0:
+                busy_area[w] += busy * dt
+                queue_area[w] += queued * dt
+                if queued and busy >= capacity:
+                    saturated[w] += dt
+                max_queue[w] = max(max_queue[w], queued)
+            seg_start = piece_end
+            w += 1
+    out = []
+    for w in range(n):
+        w_start = start + w * width
+        length = max(min(width, end - w_start), 1e-12)
+        out.append(
+            Window(
+                start=w_start - start,
+                length=length,
+                utilization=busy_area[w] / (capacity * length),
+                mean_queue=queue_area[w] / length,
+                max_queue=max_queue[w],
+                saturated_time=saturated[w],
+            )
+        )
+    return out

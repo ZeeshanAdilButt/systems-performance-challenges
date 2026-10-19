@@ -1,4 +1,4 @@
-"""Challenge 01: where does latency go as a service gets busier?
+"""Lab 01: where does latency go as a service gets busier?
 
 Sweep load on a 4-worker service from 10% to 95% busy, and at every step put three
 answers next to each other:
@@ -139,7 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     base = args.duration or (2.5 if args.quick else 4.0)
     rng = random.Random(args.seed)
 
-    out: list[str] = ["# Challenge 01: the knee", ""]
+    out: list[str] = ["# Lab 01 · The knee: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

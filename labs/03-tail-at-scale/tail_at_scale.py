@@ -1,4 +1,4 @@
-"""Challenge 03: fan-out turns a rare slow backend into a common slow request.
+"""Lab 03: fan-out turns a rare slow backend into a common slow request.
 
 A front-end request calls ``k`` backends in parallel and has to wait for all of them.
 Each backend call is fast (2 ms) 99% of the time and slow (50 ms) 1% of the time. One
@@ -30,7 +30,7 @@ from jiffy_load import Sample, open_loop, poisson
 from jiffy_metrics import Histogram, ms, pct, table
 from jiffy_service import Client, Reply, spawn
 
-WORKERS = 64  # plenty: this challenge is about variance, not queueing
+WORKERS = 64  # plenty: this lab is about variance, not queueing
 FAST, SLOW, SLOW_SHARE = 0.002, 0.050, 0.01
 THRESHOLD = 0.020  # what counts as slow, for one backend call or one front-end request
 HEDGE_AFTER = 0.010
@@ -136,7 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     n = args.requests or (120 if args.quick else 300)
 
-    out: list[str] = ["# Challenge 03: tail at scale", ""]
+    out: list[str] = ["# Lab 03 · Tail at scale: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

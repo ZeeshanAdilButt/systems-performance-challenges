@@ -1,4 +1,4 @@
-"""Challenge 02: the numbers that look fine while users suffer.
+"""Lab 02: the numbers that look fine while users suffer.
 
 Part A, microbursts. Two workloads with the same average rate, 50% of a 4-worker
 service. One is smooth Poisson; the other packs the same requests into 50 ms bursts
@@ -123,7 +123,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     burst_seconds = 4.0 if args.quick else 8.0
     stall_seconds = 4.5 if args.quick else 9.0
 
-    out: list[str] = ["# Challenge 02: averages lie", ""]
+    out: list[str] = ["# Lab 02 · Averages lie: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

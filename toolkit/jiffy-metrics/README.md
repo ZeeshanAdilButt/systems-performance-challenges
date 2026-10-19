@@ -49,6 +49,7 @@ use = UseRecorder(capacity=4)
 # ... in the server:  use.enqueued(); use.started(); use.finished(ok=True)
 coarse = use.summary(1.0)  # utilization, peak_utilization, saturated_windows, max_queue
 fine = use.summary(0.01)  # the same run, ten-millisecond windows
+now = use.recent(0.1)  # just the last 100 ms, cheap enough to ask ten times a second
 ```
 
 *Saturation* means work waiting while every worker is busy. A request that waits a few
@@ -58,3 +59,17 @@ microseconds for an idle worker to wake up does not count.
 
 `table(headers, rows)` gives a Markdown table whose columns also line up in a terminal.
 `bars(labels, values)` draws a text bar chart, and `ms()` and `pct()` format numbers.
+
+## Live feed
+
+Numbers for a dashboard to draw while a run is still going (see
+[jiffy-ui](../jiffy-ui)). Off unless the environment variable `JIFFY_LIVE` holds an
+address, so code that calls it runs unchanged everywhere else.
+
+```python
+from jiffy_metrics import live
+
+live.slow_above(0.050)  # what this run calls a slow request
+live.step("  measuring at 70% ...")  # prints the line, and marks it on the charts
+open_loop(schedule, call, on_sample=live.record)  # every finished request, batched
+```

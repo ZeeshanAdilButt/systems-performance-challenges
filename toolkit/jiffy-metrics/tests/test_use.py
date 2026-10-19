@@ -84,3 +84,33 @@ def test_reset_keeps_work_in_flight() -> None:
     at(clock, 6.0)
     assert use.summary(1.0).utilization == pytest.approx(1.0)
     assert use.summary(1.0).windows == 1
+
+
+def test_recent_sees_only_the_last_stretch() -> None:
+    clock = FakeClock()
+    use = UseRecorder(capacity=2, clock=clock)
+    use.enqueued()
+    use.started()
+    at(clock, 0.9)
+    use.finished()  # one worker busy from 0 to 0.9 s, then idle
+    use.enqueued()  # and a request waiting from 0.9 s on
+    at(clock, 1.0)
+    w = use.recent(0.2)
+    assert w.start == pytest.approx(0.8)
+    assert w.length == pytest.approx(0.2)
+    assert w.utilization == pytest.approx(0.25)  # 0.1 s of 1 worker, out of 0.2 s x 2
+    assert w.mean_queue == pytest.approx(0.5)
+    assert w.max_queue == 1
+
+
+def test_recent_right_after_a_reset_is_short() -> None:
+    clock = FakeClock()
+    use = UseRecorder(capacity=1, clock=clock)
+    use.enqueued()
+    use.started()
+    at(clock, 5.0)
+    use.reset()
+    at(clock, 5.05)
+    w = use.recent(0.1)
+    assert w.length == pytest.approx(0.05)
+    assert w.utilization == pytest.approx(1.0)

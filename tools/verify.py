@@ -28,6 +28,7 @@ LABS = [
     ("01 the knee", "labs/01-the-knee/knee.py"),
     ("02 averages lie", "labs/02-averages-lie/averages_lie.py"),
     ("03 tail at scale", "labs/03-tail-at-scale/tail_at_scale.py"),
+    ("04 adaptive hedging", "labs/04-adaptive-hedging/adaptive_hedging.py"),
 ]
 
 

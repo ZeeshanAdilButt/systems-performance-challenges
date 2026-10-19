@@ -1,20 +1,20 @@
-"""Lab 04: a hedge timer that follows latency, and a cap on how much it may hedge.
+"""Part 4 · Adaptive hedging: how late is "late" when normal calls keep getting slower?
 
-Lab 03 resent every backend call still unanswered after a fixed 10 ms. On a quiet laptop
+Part 3 resent every backend call still unanswered after a fixed 10 ms. On a quiet laptop
 that was cheap. On a busy one, normal calls took longer than 10 ms, so the timer fired on
 calls that weren't stuck at all: 40% more calls for very little gain.
 
-This lab makes that happen on purpose. Normal backend calls start at about 2 ms and drift
+This part makes that happen on purpose. Normal backend calls start at about 2 ms and drift
 up to about 14 ms during the run, the way a service slows down when its machine gets
 busy. Then it sends the same pages four ways:
 
 - no hedging;
-- hedge after a fixed 10 ms (lab 03's timer);
+- hedge after a fixed 10 ms (part 3's timer);
 - adaptive: hedge after the 95th percentile of the last 1000 calls;
 - adaptive with a budget: hedges may add at most 5% more calls.
 
-    uv run labs/04-adaptive-hedging/adaptive_hedging.py           about two minutes
-    uv run labs/04-adaptive-hedging/adaptive_hedging.py --quick   about a minute
+    uv run challenges/challenge-1-latency-under-load/part-4-adaptive-hedging/adaptive_hedging.py
+    (about two minutes; add --quick for about a minute)
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ FRONT_RATE = 10.0  # pages per second
 QUIET, BUSY = 0.002, 0.014  # a normal call's typical time at the start, and at the end
 STUCK, STUCK_SHARE = 0.200, 0.01  # 1 call in 100 gets stuck for 200 ms
 THRESHOLD = 0.100  # a page that takes longer than this counts as slow
-FIXED_DELAY = 0.010  # lab 03's timer
+FIXED_DELAY = 0.010  # part 3's timer
 PERCENTILE, WINDOW = 95, 1000  # adaptive timer: p95 of the last 1000 calls
 WARMUP = 100  # calls to see before trusting the window; until then, FIXED_DELAY
 BUDGET, MAX_SAVED = 0.05, 10.0  # hedges may add 5% more calls, with 10 saved up at most
@@ -155,7 +155,7 @@ def fan_out(client: Client, seed: int, typical: float, hedger: Hedger) -> Front:
     # Each call has its own timer, started when it was sent. Every half millisecond, look
     # at the calls still out: hedge each one that has been out longer than ``delay``, if
     # the budget allows. Short sleeps, not a lock timeout, which Windows rounds up to
-    # about 21 ms (lab 03).
+    # about 21 ms (part 3).
     waiting = list(range(K)) if delay is not None else []
     while delay is not None and waiting:
         now = time.perf_counter()
@@ -217,7 +217,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     n = args.requests or (120 if args.quick else 300)
 
-    out: list[str] = ["# Lab 04 · Adaptive hedging: results", ""]
+    out: list[str] = ["# Part 4 · Adaptive hedging: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

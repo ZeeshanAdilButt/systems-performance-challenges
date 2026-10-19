@@ -1,13 +1,13 @@
-"""A live feed of a running lab, for the dashboard in ``toolkit/jiffy-ui`` to draw.
+"""A live feed of a running part, for the dashboard in ``toolkit/jiffy-ui`` to draw.
 
 Off by default: every function here does nothing (``step`` still prints) unless the
 environment variable ``JIFFY_LIVE`` holds an address such as ``127.0.0.1:52011``. The
-dashboard sets it when it starts a lab. Child processes inherit it, so the lab and the
+dashboard sets it when it starts a part. Child processes inherit it, so the part and the
 server it spawns both report in, each over its own connection.
 
 One JSON object per line, the same framing jiffy-service uses:
 
-    {"kind": "step", "text": "measuring at 70% for 4s ..."}      the lab moved on
+    {"kind": "step", "text": "measuring at 70% for 4s ..."}      the part moved on
     {"kind": "slow", "above": 0.05}                              what counts as slow
     {"kind": "samples", "latency": [0.011, ...], "errors": 0}     requests just finished
     {"kind": "use", "busy": 0.71, "queue": 1.4, "max_queue": 6}   the server, last 100 ms
@@ -44,7 +44,7 @@ class Timed(Protocol):
 
 class Feed:
     """One connection to the dashboard. Thread-safe. If the dashboard goes away, the feed
-    goes quiet and the lab carries on."""
+    goes quiet and the part carries on."""
 
     def __init__(self, address: tuple[str, int]) -> None:
         self._sock = socket.create_connection(address, timeout=5)
@@ -146,5 +146,5 @@ def step(text: str) -> None:
 
 
 def slow_above(seconds: float) -> None:
-    """Tell the dashboard what this lab calls a slow request."""
+    """Tell the dashboard what this part calls a slow request."""
     send({"kind": "slow", "above": seconds})

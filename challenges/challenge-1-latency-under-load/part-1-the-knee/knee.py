@@ -1,4 +1,4 @@
-"""Lab 01: where does latency go as a service gets busier?
+"""Part 1 · The knee: how busy can a server get before people notice it's slow?
 
 Sweep load on a 4-worker service from 10% to 95% busy, and at every step put three
 answers next to each other:
@@ -8,8 +8,8 @@ answers next to each other:
   through a perfect queue with no network, no scheduler and no Python;
 - **real**: what the client measured over TCP against a separate server process.
 
-    uv run labs/01-the-knee/knee.py           full sweep, about a minute
-    uv run labs/01-the-knee/knee.py --quick   three load levels, about fifteen seconds
+    uv run challenges/challenge-1-latency-under-load/part-1-the-knee/knee.py
+    (about a minute; add --quick for about fifteen seconds)
 """
 
 from __future__ import annotations
@@ -139,7 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     base = args.duration or (2.5 if args.quick else 4.0)
     rng = random.Random(args.seed)
 
-    out: list[str] = ["# Lab 01 · The knee: results", ""]
+    out: list[str] = ["# Part 1 · The knee: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

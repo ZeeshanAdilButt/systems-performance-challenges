@@ -12,7 +12,7 @@ It measures itself the way a typical service does, and reports those numbers bac
 - ``service``: from pickup to done.
 
 Anything that happens *before* the reader thread sees the request (a full socket
-buffer, a paused process) is invisible to those two numbers. Lab 02 is about that
+buffer, a paused process) is invisible to those two numbers. Part 2 is about that
 blind spot.
 
 ``Stall`` simulates a stop-the-world pause, such as a garbage collector or a VM being

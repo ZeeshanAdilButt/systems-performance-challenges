@@ -1,4 +1,4 @@
-"""Lab 02: the numbers that look fine while users suffer.
+"""Part 2 · Averages lie: can your graphs say "everything's fine" while people wait?
 
 Part A, microbursts. Two workloads with the same average rate, 50% of a 4-worker
 service. One is smooth Poisson; the other packs the same requests into 50 ms bursts
@@ -13,8 +13,8 @@ garbage collector). The same service is measured three ways:
 - by an open-loop load tool (requests go out on schedule, latency counted from when each
   was due).
 
-    uv run labs/02-averages-lie/averages_lie.py           about 45 seconds
-    uv run labs/02-averages-lie/averages_lie.py --quick   about 20 seconds
+    uv run challenges/challenge-1-latency-under-load/part-2-averages-lie/averages_lie.py
+    (about 45 seconds; add --quick for about 20 seconds)
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     burst_seconds = 4.0 if args.quick else 8.0
     stall_seconds = 4.5 if args.quick else 9.0
 
-    out: list[str] = ["# Lab 02 · Averages lie: results", ""]
+    out: list[str] = ["# Part 2 · Averages lie: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

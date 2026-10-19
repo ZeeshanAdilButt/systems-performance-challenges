@@ -1,6 +1,6 @@
 """One measured run against a jiffy-service: the client's view and the server's, together.
 
-Every lab needs the same three steps: reset the server's counters, drive it with
+Every part needs the same three steps: reset the server's counters, drive it with
 some load, then ask the server what it saw. ``Run`` keeps both perspectives side by side,
 because the interesting lessons live in the gap between them:
 

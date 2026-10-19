@@ -1,4 +1,4 @@
-# Lab 02 · Averages lie: results
+# Part 2 · Averages lie: results
 
 ## A. Same average load, 50% of 4 workers, two shapes
 

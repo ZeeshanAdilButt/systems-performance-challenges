@@ -1,21 +1,21 @@
-# Lab 04 · Adaptive hedging
+# Part 4 · Adaptive hedging
 
 **Question:** how late is "late" when normal calls keep getting slower?
 
-**Answer:** don't pick a number. Lab 03's fixed 10 ms timer resent **86%** of calls once
+**Answer:** don't pick a number. Part 3's fixed 10 ms timer resent **86%** of calls once
 normal calls drifted past 10 ms, and almost none of those copies helped. A timer set from
 the last 1000 calls (their 95th percentile) moved with the drift: the same rescue of stuck
 calls for **7%** extra calls. A budget can cap the extra calls hard, but it costs some slow
-pages, and this lab shows exactly which ones.
+pages, and this part shows exactly which ones.
 
-Read [Lab 03](../03-tail-at-scale) first: this lab picks up from
-[its catch](../03-tail-at-scale#the-catch).
+Read [Part 3](../part-3-tail-at-scale) first: this part picks up from
+[its catch](../part-3-tail-at-scale#the-catch).
 
 ## Run it
 
 ```bash
-uv run labs/04-adaptive-hedging/adaptive_hedging.py            # about two minutes
-uv run labs/04-adaptive-hedging/adaptive_hedging.py --quick    # about a minute
+uv run challenges/challenge-1-latency-under-load/part-4-adaptive-hedging/adaptive_hedging.py            # about two minutes
+uv run challenges/challenge-1-latency-under-load/part-4-adaptive-hedging/adaptive_hedging.py --quick    # about a minute
 ```
 
 ## The idea, from zero
@@ -23,7 +23,7 @@ uv run labs/04-adaptive-hedging/adaptive_hedging.py --quick    # about a minute
 You're throwing a party and order food from 50 stalls at once. You can't eat until every
 order has arrived. Now and then one stall forgets your order, and you wait forever.
 
-- **Hedging** (lab 03): if an order is late, place the same order again with another
+- **Hedging** (part 3): if an order is late, place the same order again with another
   stall and take whichever arrives first.
 - **A fixed timer**: "reorder anything not here after 10 minutes". On a quiet evening,
   orders take 3 minutes, so you only reorder the forgotten ones. On a busy Friday,
@@ -35,7 +35,7 @@ order has arrived. Now and then one stall forgets your order, and you wait forev
 - **A budget**: "at most 1 extra order for every 20 normal ones". Even if your timer
   goes wrong, the bill can't grow by more than 5%.
 
-Three words this lab adds:
+Three words this part adds:
 
 - **Drift**: normal latency slowly changing over time, here from about 2 ms to about
   14 ms per call.
@@ -43,7 +43,7 @@ Three words this lab adds:
   so it follows the drift. 95th percentile means 1 call in 20 took longer.
 - **Budget**: a cap on extra calls, as a share of normal calls.
 
-## What the lab does
+## What the part does
 
 | Step | What happens | Code |
 |---|---|---|
@@ -55,11 +55,13 @@ Three words this lab adds:
 | 6 | Try four policies: no hedging, fixed 10 ms, adaptive p95, adaptive p95 + 5% budget | [`POLICIES`](adaptive_hedging.py#L74-L79), [loop](adaptive_hedging.py#L233-L235) |
 | 7 | Each call has its own timer from when it was sent. Every half millisecond, any call out longer than the timer gets a copy, and the first answer wins | [timer loop](adaptive_hedging.py#L159-L172), [late calls](adaptive_hedging.py#L162), [first wins](adaptive_hedging.py#L123-L137) |
 | 8 | **Fixed timer**: always 10 ms | [`FIXED_DELAY`](adaptive_hedging.py#L43), [`delay`](adaptive_hedging.py#L90-L93) |
-| 9 | **Adaptive timer**: time every call, keep the last 1000, hedge after their p95. Until 100 calls have been seen, use 10 ms | [timing each call](adaptive_hedging.py#L139-L144), [`PERCENTILE, WINDOW`](adaptive_hedging.py#L44), [warm-up](adaptive_hedging.py#L94-L95), [`RollingPercentile`](../../toolkit/jiffy-metrics/src/jiffy_metrics/rolling.py#L23) |
-| 10 | **Budget**: each page's 50 calls earn 50 × 5% = 2.5 hedges. A hedge spends 1, and is refused when there's less than 1 saved. At most 10 can be saved up | [`BUDGET, MAX_SAVED`](adaptive_hedging.py#L46), [earn](adaptive_hedging.py#L152), [ask](adaptive_hedging.py#L164), [`HedgeBudget`](../../toolkit/jiffy-load/src/jiffy_load/budget.py#L35-L48) |
+| 9 | **Adaptive timer**: time every call, keep the last 1000, hedge after their p95. Until 100 calls have been seen, use 10 ms | [timing each call](adaptive_hedging.py#L139-L144), [`PERCENTILE, WINDOW`](adaptive_hedging.py#L44), [warm-up](adaptive_hedging.py#L94-L95), [`RollingPercentile`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/rolling.py#L23) |
+| 10 | **Budget**: each page's 50 calls earn 50 × 5% = 2.5 hedges. A hedge spends 1, and is refused when there's less than 1 saved. At most 10 can be saved up | [`BUDGET, MAX_SAVED`](adaptive_hedging.py#L46), [earn](adaptive_hedging.py#L152), [ask](adaptive_hedging.py#L164), [`HedgeBudget`](../../../toolkit/jiffy-load/src/jiffy_load/budget.py#L35-L48) |
 | 11 | A page counts as **slow** if it takes over 100 ms. A rescued stuck call lands well under that, an unrescued one well over | [`THRESHOLD`](adaptive_hedging.py#L42) |
 
 ## The results
+
+![Slow pages and extra calls for each way of hedging](chart.svg)
 
 One full run on this laptop, with other apps using about 60% of the CPU
 ([results.md](results.md)).
@@ -93,8 +95,8 @@ One full run on this laptop, with other apps using about 60% of the CPU
 
 | Column | In plain words | Code |
 |---|---|---|
-| slow pages | share of pages that took over 100 ms | [`fraction_above`](adaptive_hedging.py#L249), [in the histogram](../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L101) |
-| p50 / p99 | page wait: typical, and 1-in-100 worst | [`percentile`](adaptive_hedging.py#L250-L251), [in the histogram](../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
+| slow pages | share of pages that took over 100 ms | [`fraction_above`](adaptive_hedging.py#L249), [in the histogram](../../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L101) |
+| p50 / p99 | page wait: typical, and 1-in-100 worst | [`percentile`](adaptive_hedging.py#L250-L251), [in the histogram](../../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
 | extra calls | hedges sent, as a share of the 50 normal calls per page | [`extra`](adaptive_hedging.py#L192-L195), [used](adaptive_hedging.py#L252) |
 | hedges that won | share of hedges that answered before the call they copied. The rest were wasted | [counted](adaptive_hedging.py#L129-L130), [share](adaptive_hedging.py#L253) |
 | refused | hedges the budget said no to | [counted](adaptive_hedging.py#L168-L169), [total](adaptive_hedging.py#L254) |
@@ -132,8 +134,8 @@ One full run on this laptop, with other apps using about 60% of the CPU
 - **Hedges are free on this bench and they aren't in real life.** The server's workers
   just sleep, and there are 128 of them, so the fixed timer's 58% extra calls cost
   nothing here except the count. On a real backend every extra call takes a share of
-  its CPU or disk, so 58% more calls means 58% more load. [Lab 03's busy
-  run](../03-tail-at-scale#the-catch) showed what that does.
+  its CPU or disk, so 58% more calls means 58% more load. [Part 3's busy
+  run](../part-3-tail-at-scale#the-catch) showed what that does.
 - **The adaptive timer measures what the caller sees**, not what the backend does. The
   18 ms in the quiet phase is mostly this laptop being busy, not the 2 ms of work.
   That's the point: it reacts to whatever makes calls late, so nobody has to know the
@@ -160,10 +162,10 @@ One full run on this laptop, with other apps using about 60% of the CPU
 
 | File | What's in it |
 |---|---|
-| [adaptive_hedging.py](adaptive_hedging.py) | the whole lab |
+| [adaptive_hedging.py](adaptive_hedging.py) | the whole part |
 | [results.md](results.md) | the last full run |
 | [test_adaptive_hedging.py](test_adaptive_hedging.py) | checks the drift, each policy's timer, that a hedge rescues a stuck call, and that an empty budget sends none |
 
 The two reusable pieces live in the toolkit:
-[`RollingPercentile`](../../toolkit/jiffy-metrics/src/jiffy_metrics/rolling.py) and
-[`HedgeBudget`](../../toolkit/jiffy-load/src/jiffy_load/budget.py).
+[`RollingPercentile`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/rolling.py) and
+[`HedgeBudget`](../../../toolkit/jiffy-load/src/jiffy_load/budget.py).

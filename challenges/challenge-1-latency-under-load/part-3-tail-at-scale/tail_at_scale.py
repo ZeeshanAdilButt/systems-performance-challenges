@@ -1,4 +1,4 @@
-"""Lab 03: fan-out turns a rare slow backend into a common slow request.
+"""Part 3 · Tail at scale: what happens when one page needs answers from many servers?
 
 A front-end request calls ``k`` backends in parallel and has to wait for all of them.
 Each backend call is fast (2 ms) 99% of the time and slow (50 ms) 1% of the time. One
@@ -10,8 +10,8 @@ not answered after 10 ms (well past its usual 2 ms), send the same call again an
 whichever answer comes first. It costs a few percent more backend calls and removes most
 of the tail.
 
-    uv run labs/03-tail-at-scale/tail_at_scale.py           about a minute and a half
-    uv run labs/03-tail-at-scale/tail_at_scale.py --quick   about 30 seconds
+    uv run challenges/challenge-1-latency-under-load/part-3-tail-at-scale/tail_at_scale.py
+    (about a minute and a half; add --quick for about 30 seconds)
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from jiffy_load import Sample, open_loop, poisson
 from jiffy_metrics import Histogram, live, ms, pct, table
 from jiffy_service import Client, Reply, spawn
 
-WORKERS = 64  # plenty: this lab is about variance, not queueing
+WORKERS = 64  # plenty: this part is about variance, not queueing
 FAST, SLOW, SLOW_SHARE = 0.002, 0.050, 0.01
 THRESHOLD = 0.020  # what counts as slow, for one backend call or one front-end request
 HEDGE_AFTER = 0.010
@@ -138,7 +138,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     n = args.requests or (120 if args.quick else 300)
 
-    out: list[str] = ["# Lab 03 · Tail at scale: results", ""]
+    out: list[str] = ["# Part 3 · Tail at scale: results", ""]
 
     def say(text: str = "") -> None:
         print(text, flush=True)

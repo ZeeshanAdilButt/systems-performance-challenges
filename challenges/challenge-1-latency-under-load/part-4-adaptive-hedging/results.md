@@ -1,4 +1,4 @@
-# Lab 04 · Adaptive hedging: results
+# Part 4 · Adaptive hedging: results
 
 ## A. Four ways to hedge, same 50-call pages, normal calls drifting from 2.00 ms to 14.0 ms
 

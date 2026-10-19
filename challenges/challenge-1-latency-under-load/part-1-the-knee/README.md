@@ -1,4 +1,4 @@
-# Lab 01 · The knee
+# Part 1 · The knee
 
 **Question:** how busy can a server get before people notice it's slow?
 
@@ -11,8 +11,8 @@ sharply upward, like a knee.
 From the repository folder:
 
 ```bash
-uv run labs/01-the-knee/knee.py            # about a minute
-uv run labs/01-the-knee/knee.py --quick    # about fifteen seconds
+uv run challenges/challenge-1-latency-under-load/part-1-the-knee/knee.py            # about a minute
+uv run challenges/challenge-1-latency-under-load/part-1-the-knee/knee.py --quick    # about fifteen seconds
 ```
 
 It prints three tables and saves them to [results.md](results.md).
@@ -30,24 +30,26 @@ about **10 ms** to make (our "work"). Customers walk in at random times.
 - The busier the shop, the more often you hit a line, and the longer the line is when you
   do. That's why the waiting doesn't grow evenly. It's flat for a long time, then shoots up.
 
-This lab measures that on a real server, so you can see the bend for yourself.
+This part measures that on a real server, so you can see the bend for yourself.
 
-## What the lab does, step by step
+## What the part does, step by step
 
 | Step | What happens | Code |
 |---|---|---|
 | 1 | Start the fake server with 4 workers, in its own process | [`spawn(WORKERS)`](knee.py#L155), [`WORKERS = 4`](knee.py#L28) |
-| 2 | **Measure first:** send gentle traffic and check how long "10 ms of work" really takes here. It comes out at about 10.4 ms, because the laptop never sleeps exactly 10 ms | [`calibrate`](knee.py#L156) → [`calibrate()`](../../toolkit/jiffy-service/src/jiffy_service/experiment.py#L79) |
+| 2 | **Measure first:** send gentle traffic and check how long "10 ms of work" really takes here. It comes out at about 10.4 ms, because the laptop never sleeps exactly 10 ms | [`calibrate`](knee.py#L156) → [`calibrate()`](../../../toolkit/jiffy-service/src/jiffy_service/experiment.py#L79) |
 | 3 | For each target (10%, 30%, … 95% busy), work out how many requests per second hit that target: `rate = busy × workers ÷ work time` | [`rate = …`](knee.py#L64), [targets](knee.py#L30) |
-| 4 | Make a random schedule of when each request will be sent, like customers walking in at random | [`poisson(...)`](knee.py#L65) → [`poisson()`](../../toolkit/jiffy-load/src/jiffy_load/arrivals.py#L13) |
-| 5 | Send every request **at its scheduled time**, even if earlier ones haven't been answered yet, and time each one | [`drive_open`](knee.py#L67) → [`open_loop()`](../../toolkit/jiffy-load/src/jiffy_load/runner.py#L69) |
-| 6 | Inside the server: a request arrives, waits in the queue, a worker picks it up, does the work, replies | [arrives](../../toolkit/jiffy-service/src/jiffy_service/server.py#L132), [picked up](../../toolkit/jiffy-service/src/jiffy_service/server.py#L155), [work](../../toolkit/jiffy-service/src/jiffy_service/server.py#L158), [reply](../../toolkit/jiffy-service/src/jiffy_service/server.py#L162) |
+| 4 | Make a random schedule of when each request will be sent, like customers walking in at random | [`poisson(...)`](knee.py#L65) → [`poisson()`](../../../toolkit/jiffy-load/src/jiffy_load/arrivals.py#L13) |
+| 5 | Send every request **at its scheduled time**, even if earlier ones haven't been answered yet, and time each one | [`drive_open`](knee.py#L67) → [`open_loop()`](../../../toolkit/jiffy-load/src/jiffy_load/runner.py#L69) |
+| 6 | Inside the server: a request arrives, waits in the queue, a worker picks it up, does the work, replies | [arrives](../../../toolkit/jiffy-service/src/jiffy_service/server.py#L132), [picked up](../../../toolkit/jiffy-service/src/jiffy_service/server.py#L155), [work](../../../toolkit/jiffy-service/src/jiffy_service/server.py#L158), [reply](../../../toolkit/jiffy-service/src/jiffy_service/server.py#L162) |
 | 7 | Compare with two predictions: the queueing **formula**, and a **perfect simulation** of the same customers | [`MMc(...)`](knee.py#L74), [`fcfs(...)`](knee.py#L73) |
 | 8 | Bigger targets run longer, because near the top the line swings wildly and short runs are mostly luck | [`duration_for`](knee.py#L34) |
 
 ## The results
 
 From the last full run on this laptop ([results.md](results.md)):
+
+![p99 and average latency against busy %: flat until about 80%, then shooting up](chart.svg)
 
 | aimed | busy (server) | req/s | max queue | mean: theory | sim | real | p99: sim | real |
 |---|---|---|---|---|---|---|---|---|
@@ -64,14 +66,14 @@ From the last full run on this laptop ([results.md](results.md)):
 
 | Column | In plain words | Measured by | Code |
 |---|---|---|---|
-| aimed | the busy % we were trying to reach | the lab | [targets](knee.py#L30) |
-| busy (server) | how much of the time the 4 workers were actually working | the **server**, counting every start and finish | [`utilization`](knee.py#L52) → [`summary()`](../../toolkit/jiffy-metrics/src/jiffy_metrics/use.py#L161) |
-| req/s | requests finished per second (throughput) | the client | [`throughput()`](../../toolkit/jiffy-load/src/jiffy_load/runner.py#L150) |
-| max queue | the longest the line ever got | the server | [`max_queue`](knee.py#L57) → [`use.py`](../../toolkit/jiffy-metrics/src/jiffy_metrics/use.py#L148) |
-| mean: theory | average wait predicted by the queueing formula (M/M/c) | math, no measuring | [`mean_latency`](../../toolkit/jiffy-queueing/src/jiffy_queueing/theory.py#L77) |
-| sim | average wait if the same customers had gone through a perfect queue | a simulation of this exact run | [`fcfs()`](../../toolkit/jiffy-queueing/src/jiffy_queueing/simulate.py#L36) |
-| real | average wait people actually got | the **client**, from when each request was due to when its answer came back | [`latency`](../../toolkit/jiffy-load/src/jiffy_load/runner.py#L46) |
-| p99: sim / real | the wait of the 1-in-100 unluckiest request | same as above, then sorted | [`percentile()`](../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
+| aimed | the busy % we were trying to reach | the part | [targets](knee.py#L30) |
+| busy (server) | how much of the time the 4 workers were actually working | the **server**, counting every start and finish | [`utilization`](knee.py#L52) → [`summary()`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/use.py#L161) |
+| req/s | requests finished per second (throughput) | the client | [`throughput()`](../../../toolkit/jiffy-load/src/jiffy_load/runner.py#L150) |
+| max queue | the longest the line ever got | the server | [`max_queue`](knee.py#L57) → [`use.py`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/use.py#L148) |
+| mean: theory | average wait predicted by the queueing formula (M/M/c) | math, no measuring | [`mean_latency`](../../../toolkit/jiffy-queueing/src/jiffy_queueing/theory.py#L77) |
+| sim | average wait if the same customers had gone through a perfect queue | a simulation of this exact run | [`fcfs()`](../../../toolkit/jiffy-queueing/src/jiffy_queueing/simulate.py#L36) |
+| real | average wait people actually got | the **client**, from when each request was due to when its answer came back | [`latency`](../../../toolkit/jiffy-load/src/jiffy_load/runner.py#L46) |
+| p99: sim / real | the wait of the 1-in-100 unluckiest request | same as above, then sorted | [`percentile()`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
 
 ## What it means
 
@@ -89,7 +91,7 @@ From the last full run on this laptop ([results.md](results.md)):
 - **The practical rule:** keep busy servers under about 70–75%. That headroom is what
   keeps waiting short.
 
-The first table the lab prints is the formula on its own. It shows the same thing with no
+The first table the part prints is the formula on its own. It shows the same thing with no
 noise: one worker at 90% busy makes people wait 10x the work time, while 4 workers
 sharing one line at 90% make them wait about 3x. Sharing one line between several
 workers pushes the knee to the right.
@@ -106,6 +108,6 @@ workers pushes the knee to the right.
 
 | File | What's in it |
 |---|---|
-| [knee.py](knee.py) | the whole lab |
+| [knee.py](knee.py) | the whole part |
 | [results.md](results.md) | the last full run |
-| [test_knee.py](test_knee.py) | checks the lab: theory, simulation and reality line up |
+| [test_knee.py](test_knee.py) | checks the part: theory, simulation and reality line up |

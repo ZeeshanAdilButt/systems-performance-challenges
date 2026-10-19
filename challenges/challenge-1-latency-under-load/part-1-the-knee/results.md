@@ -1,4 +1,4 @@
-# Lab 01 · The knee: results
+# Part 1 · The knee: results
 
 ## Theory first: latency as a multiple of service time (M/M/c)
 

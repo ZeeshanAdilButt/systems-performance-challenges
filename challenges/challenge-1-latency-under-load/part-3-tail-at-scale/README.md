@@ -1,19 +1,20 @@
-# Lab 03 · Tail at scale
+# Part 3 · Tail at scale
 
 **Question:** what happens when one page needs answers from many servers at once?
 
 **Answer:** a server that's slow only 1 time in 100 makes **40%** of pages slow once each
 page asks 50 of them. A cheap fix: if an answer is late, ask again and take whichever
-answer comes first ("hedging"). It brings slow pages under 1% for about 1–2% extra work,
-as long as the "late" timer is set sensibly (see [the catch](#the-catch)).
+answer comes first ("hedging"). At 20 servers per page it takes slow pages from 15% to
+0.3% for under 1% extra calls, as long as the "late" timer is set sensibly (see
+[the catch](#the-catch)).
 
-Read [Lab 01](../01-the-knee) first if words like *latency* or *p99* are new.
+Read [Part 1](../part-1-the-knee) first if words like *latency* or *p99* are new.
 
 ## Run it
 
 ```bash
-uv run labs/03-tail-at-scale/tail_at_scale.py            # about a minute and a half
-uv run labs/03-tail-at-scale/tail_at_scale.py --quick    # about 30 seconds
+uv run challenges/challenge-1-latency-under-load/part-3-tail-at-scale/tail_at_scale.py            # about a minute and a half
+uv run challenges/challenge-1-latency-under-load/part-3-tail-at-scale/tail_at_scale.py --quick    # about 30 seconds
 ```
 
 ## The idea, from zero
@@ -36,11 +37,11 @@ That's the "tail at scale".
 call again. Whichever copy answers first wins. Most of the time the second copy lands on
 a fast moment and comes back quickly.
 
-## What the lab does
+## What the part does
 
 | Step | What happens | Code |
 |---|---|---|
-| 1 | Start a server with 64 workers, so nothing ever waits in line. This lab is about randomness, not busyness | [`WORKERS = 64`](tail_at_scale.py#L33), [`spawn`](tail_at_scale.py#L148) |
+| 1 | Start a server with 64 workers, so nothing ever waits in line. This part is about randomness, not busyness | [`WORKERS = 64`](tail_at_scale.py#L33), [`spawn`](tail_at_scale.py#L148) |
 | 2 | Each backend call takes **2 ms** 99% of the time and **50 ms** 1% of the time | [`FAST, SLOW, SLOW_SHARE`](tail_at_scale.py#L34), [`backend_work`](tail_at_scale.py#L60) |
 | 3 | A "page" sends `k` calls at once and waits for all of them | [`fan_out`](tail_at_scale.py#L64), [calls sent](tail_at_scale.py#L85), [wait for all](tail_at_scale.py#L95) |
 | 4 | Pages arrive at 25 per second, on a schedule | [`FRONT_RATE`](tail_at_scale.py#L37), [`measure`](tail_at_scale.py#L119) |
@@ -50,26 +51,28 @@ a fast moment and comes back quickly.
 
 ## The results
 
-Two full runs of the same code on this laptop. **Quiet** means nothing else was running.
-**Busy** means other apps were using the CPU ([results.md](results.md) holds the busy one,
-which is the latest).
+From the latest full run on this laptop ([results.md](results.md)):
 
-**A · Fan-out**, quiet laptop. Each backend call was slow `p` = 0.97% of the time:
+![More servers per page, more slow pages](chart-fanout.svg)
+
+**A · Fan-out.** Each backend call was slow `p` = 0.97% of the time:
 
 | pages ask `k` servers | slow: theory | slow: measured | p50 | p90 | p99 |
 |---|---|---|---|---|---|
-| 1 | 0.97% | 0.69% | 2.92 ms | 3.43 ms | 4.90 ms |
-| 5 | 4.8% | 7.7% | 3.26 ms | 4.14 ms | 52.4 ms |
-| 10 | 9.3% | 10.6% | 3.64 ms | 51.3 ms | 51.8 ms |
-| 20 | 17.7% | 15.3% | 4.35 ms | 51.3 ms | 52.3 ms |
-| 50 | 38.6% | 40.1% | 7.83 ms | 52.9 ms | 56.1 ms |
+| 1 | 0.97% | 0.69% | 3.07 ms | 3.39 ms | 4.14 ms |
+| 5 | 4.8% | 7.7% | 3.43 ms | 4.18 ms | 51.8 ms |
+| 10 | 9.3% | 10.6% | 4.44 ms | 51.3 ms | 52.9 ms |
+| 20 | 17.7% | 15.3% | 4.44 ms | 51.3 ms | 52.4 ms |
+| 50 | 38.6% | 40.1% | 7.98 ms | 52.9 ms | 57.3 ms |
 
-**B · Hedging** after 10 ms, quiet laptop:
+![Asking again when a call is late](chart-hedging.svg)
+
+**B · Hedging** after 10 ms:
 
 | `k` | slow before | slow with hedging | p99 before | p99 with hedging | extra calls |
 |---|---|---|---|---|---|
-| 20 | 15.3% | 0.33% | 52.3 ms | 14.6 ms | 0.81% |
-| 50 | 40.1% | 0.93% | 56.1 ms | 19.5 ms | 2.3% |
+| 20 | 15.3% | 0.33% | 52.4 ms | 15.2 ms | 0.94% |
+| 50 | 40.1% | 7.4% | 57.3 ms | 40.0 ms | 11.1% |
 
 ### Where each number comes from
 
@@ -78,23 +81,25 @@ which is the latest).
 | p (heading) | how often one backend call was really slow, measured over every call | [`p = …`](tail_at_scale.py#L160), [per call](tail_at_scale.py#L96) |
 | slow: theory | the math: chance at least one of `k` calls is slow, `1 − (1 − p)^k` | [`1 - (1 - p) ** k`](tail_at_scale.py#L169) |
 | slow: measured | share of pages that really took over 20 ms | [`fraction_above`](tail_at_scale.py#L170) |
-| p50 / p90 / p99 | page wait times: typical, 1-in-10 worst, 1-in-100 worst | [`percentile()`](../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
+| p50 / p90 / p99 | page wait times: typical, 1-in-10 worst, 1-in-100 worst | [`percentile()`](../../../toolkit/jiffy-metrics/src/jiffy_metrics/histogram.py#L85) |
 | extra calls | how many more backend calls hedging sent | [`h.calls / …`](tail_at_scale.py#L195) |
 
 ## What it means
 
-- **The math holds.** On the quiet laptop, measured slow pages follow `1 − (1 − p)^k`
+- **The math holds.** Measured slow pages follow `1 − (1 − p)^k`
   closely: about 1 in 10 pages at `k` = 10, and 4 in 10 at `k` = 50.
 - **The tail creeps toward the middle.** At `k` = 1 even the p99 page is fast. At `k` = 10
   the p90 page is slow. Every extra dependency drags the slow case further into the
   typical case.
-- **Hedging is cheap when the timer is right.** Slow pages drop from 15% to 0.3% at
-  `k` = 20 and from 40% to 0.9% at `k` = 50, for 1–2% extra calls.
+- **Hedging is cheap when the timer is right.** At `k` = 20, slow pages drop from 15% to
+  0.3% for under 1% extra calls. At `k` = 50 it still helps (40% down to 7%), but already
+  costs 11% extra calls. The fixed timer is starting to fire on calls that aren't stuck,
+  which is the catch below.
 
 ## The catch
 
 Hedging only works if "late" really means late. The timer here is fixed at 10 ms, which
-is safe when normal calls take ~3 ms. The **busy** run shows what happens when that stops
+is safe when normal calls take ~3 ms. An earlier run, on a laptop busy with other apps, shows what happens when that stops
 being true:
 
 | `k` | slow before | slow with hedging | p99 before | p99 with hedging | extra calls |
@@ -110,14 +115,14 @@ slow because of the machine, not just the 1-in-100 draw.)
 
 Real systems set the hedge timer from recent latency (for example, "the 95th percentile
 of the last minute") and cap how many extra calls hedging may send.
-[Lab 04](../04-adaptive-hedging) builds both.
+[Part 4](../part-4-adaptive-hedging) builds both.
 
 Two more things worth knowing:
 
 - **Hedging only helps when slowness is about *when and where* a call runs** (a pause, a
   busy machine), not about the call itself. If a request is slow because it's expensive,
   a copy is just as expensive.
-- **The first version of this lab hedged too late, and measuring caught it.** It used
+- **The first version of this part hedged too late, and measuring caught it.** It used
   Python's `wait(timeout=10 ms)`, which on Windows waits about **21 ms**. Timeouts get
   rounded up to the system's clock tick. Hedging then cut slow pages only by half. The
   fix is a timer made of short sleeps, [`wait_until`](tail_at_scale.py#L49), which is
@@ -133,6 +138,6 @@ Two more things worth knowing:
 
 | File | What's in it |
 |---|---|
-| [tail_at_scale.py](tail_at_scale.py) | the whole lab |
+| [tail_at_scale.py](tail_at_scale.py) | the whole part |
 | [results.md](results.md) | the last full run |
 | [test_tail_at_scale.py](test_tail_at_scale.py) | checks the timer is accurate and that a hedge really sends a second copy |

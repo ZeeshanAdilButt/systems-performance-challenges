@@ -1,0 +1,31 @@
+[project]
+name = "jiffy-ui"
+version = "0.1.0"
+description = "A local dashboard: run a lab and watch its latency, busy % and queue as live charts."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Zeeshan Adil", email = "zeeabutt@outlook.com" }]
+keywords = ["dashboard", "server-sent-events", "performance", "lab"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+    "Topic :: System :: Benchmark",
+]
+dependencies = ["jiffy-metrics"]
+
+[project.scripts]
+jiffy-ui = "jiffy_ui.__main__:main"
+
+[tool.uv.sources]
+jiffy-metrics = { workspace = true }
+
+[project.urls]
+Monorepo = "https://github.com/ZeeshanAdilButt/systems-performance-challenges"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jiffy_ui"]

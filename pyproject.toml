@@ -7,6 +7,7 @@ dependencies = [
     "jiffy-load",
     "jiffy-queueing",
     "jiffy-service",
+    "jiffy-ui",
 ]
 
 [dependency-groups]
@@ -28,6 +29,7 @@ jiffy-metrics = { workspace = true }
 jiffy-load = { workspace = true }
 jiffy-queueing = { workspace = true }
 jiffy-service = { workspace = true }
+jiffy-ui = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -39,7 +41,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PT", "N", "C4", "PIE", "
 
 [tool.ruff.lint.isort]
 known-first-party = [
-    "jiffy_metrics", "jiffy_load", "jiffy_queueing", "jiffy_service",
+    "jiffy_metrics", "jiffy_load", "jiffy_queueing", "jiffy_service", "jiffy_ui",
     "knee", "averages_lie", "tail_at_scale", "adaptive_hedging",
 ]
 

@@ -12,6 +12,7 @@ members = [
     "jiffy-metrics",
     "jiffy-queueing",
     "jiffy-service",
+    "jiffy-ui",
     "systems-performance-challenges",
 ]
 
@@ -202,6 +203,17 @@ requires-dist = [
     { name = "jiffy-load", editable = "toolkit/jiffy-load" },
     { name = "jiffy-metrics", editable = "toolkit/jiffy-metrics" },
 ]
+
+[[package]]
+name = "jiffy-ui"
+version = "0.1.0"
+source = { editable = "toolkit/jiffy-ui" }
+dependencies = [
+    { name = "jiffy-metrics" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "jiffy-metrics", editable = "toolkit/jiffy-metrics" }]
 
 [[package]]
 name = "librt"
@@ -462,6 +474,7 @@ dependencies = [
     { name = "jiffy-metrics" },
     { name = "jiffy-queueing" },
     { name = "jiffy-service" },
+    { name = "jiffy-ui" },
 ]
 
 [package.dev-dependencies]
@@ -478,6 +491,7 @@ requires-dist = [
     { name = "jiffy-metrics", editable = "toolkit/jiffy-metrics" },
     { name = "jiffy-queueing", editable = "toolkit/jiffy-queueing" },
     { name = "jiffy-service", editable = "toolkit/jiffy-service" },
+    { name = "jiffy-ui", editable = "toolkit/jiffy-ui" },
 ]
 
 [package.metadata.requires-dev]

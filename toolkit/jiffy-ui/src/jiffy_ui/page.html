@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --critical: #d03b3b;
+  --good: #006300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --good: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --good: #0ca30c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.lede { color: var(--ink-2); margin: 0 0 20px; max-width: 70ch; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.labs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.lab {
+  display: block; cursor: pointer; padding: 12px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--page);
+}
+.lab:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.lab input { position: absolute; opacity: 0; pointer-events: none; }
+.lab strong { display: block; }
+.lab span { color: var(--ink-2); font-size: 13px; }
+.lab:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
+button {
+  font: inherit; font-weight: 600; padding: 8px 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+.status { color: var(--ink-2); font-size: 14px; margin-left: auto; }
+.status b { color: var(--ink); font-weight: 600; }
+code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.92em; }
+.status code { color: var(--muted); }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-top: 14px; }
+@media (max-width: 480px) { .charts { grid-template-columns: 1fr; } }
+.chart { position: relative; }
+.chart h2 { font-size: 15px; margin: 0; }
+.chart p.explain { margin: 2px 0 8px; color: var(--ink-2); font-size: 13px; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 4px; min-height: 18px; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+svg { display: block; width: 100%; height: 220px; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .grid { stroke: var(--grid); stroke-width: 1; }
+svg .base { stroke: var(--axis); stroke-width: 1; }
+svg .step { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+svg .stepnum { fill: var(--ink-2); font-weight: 600; }
+svg .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+svg .cross { stroke: var(--ink-2); stroke-width: 1; }
+svg .empty { fill: var(--muted); font-size: 13px; }
+.tip {
+  position: absolute; pointer-events: none; display: none; z-index: 2;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 9px; font-size: 12px; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); font-variant-numeric: tabular-nums;
+}
+.tip i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+section.below { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 860px) { section.below { grid-template-columns: 1fr; } }
+h3 { font-size: 15px; margin: 0 0 8px; }
+ol.steps { margin: 0; padding-left: 0; list-style: none; font-size: 14px; }
+ol.steps li { padding: 3px 0; color: var(--ink-2); display: flex; gap: 10px; }
+ol.steps li b { color: var(--ink); min-width: 1.5em; }
+ol.steps li.now { color: var(--ink); font-weight: 600; }
+ol.steps time { color: var(--muted); min-width: 4em; font-variant-numeric: tabular-nums; }
+pre.log {
+  margin: 0; max-height: 260px; overflow: auto; font-size: 12px; line-height: 1.45;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink-2);
+  white-space: pre;
+}
+.report { margin-top: 14px; }
+.report h2 { font-size: 18px; margin: 0 0 8px; }
+.report h3 { font-size: 15px; margin: 20px 0 8px; }
+.report .scroll { overflow-x: auto; }
+.report table { border-collapse: collapse; font-size: 13px; margin: 4px 0 8px; }
+.report th, .report td { padding: 5px 10px; border-bottom: 1px solid var(--grid); text-align: left; white-space: nowrap; }
+.report th { color: var(--ink-2); font-weight: 600; border-bottom-color: var(--axis); }
+.report td.num, .report th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.report pre { background: var(--page); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 12px; }
+.report p { max-width: 80ch; }
+.bad { color: var(--critical); }
+.hint { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lab dashboard</h1>
+  <p class="lede">
+    Pick a lab and press Run. The lab runs exactly as it does in a terminal. While it
+    measures, it sends every finished request here, and the server reports how busy it is
+    ten times a second, so you can watch the numbers move instead of waiting for the tables.
+  </p>
+
+  <div class="card">
+    <div class="labs" id="labs" role="radiogroup" aria-label="Lab"></div>
+    <div class="controls">
+      <button class="primary" id="run">Run</button>
+      <button id="stop" disabled>Stop</button>
+      <label><input type="checkbox" id="quick" checked> Quick run (shorter, a little noisier)</label>
+      <div class="status" id="status" aria-live="polite">Nothing running.</div>
+    </div>
+  </div>
+
+  <div class="charts" id="charts"></div>
+
+  <section class="below">
+    <div class="card">
+      <h3>Steps</h3>
+      <ol class="steps" id="steps"><li class="hint">The lab's steps appear here, numbered like the dashed lines on the charts.</li></ol>
+    </div>
+    <div class="card">
+      <h3>What the lab printed</h3>
+      <pre class="log" id="log"></pre>
+    </div>
+  </section>
+
+  <div class="card report" id="report" hidden></div>
+</main>
+
+<script>
+"use strict";
+
+const CHARTS = [
+  {
+    id: "latency",
+    title: () => "Latency: how long people waited",
+    explain: "p50 is the typical wait. p99: only 1 request in 100 waited longer. Each point covers half a second.",
+    source: "points",
+    unit: "ms",
+    series: [
+      { key: "p50", label: "p50", color: "--series-1", value: (v) => v * 1000 },
+      { key: "p99", label: "p99", color: "--series-2", value: (v) => v * 1000 },
+    ],
+  },
+  {
+    id: "busy",
+    title: () => "Server busy %",
+    explain: "How much of the time the workers were working, as the server measured it every 100 ms. A gap: the server was frozen and couldn't report.",
+    source: "use",
+    unit: "%",
+    max: 100,
+    series: [{ key: "busy", label: "busy", color: "--series-1", value: (v) => v * 100 }],
+  },
+  {
+    id: "queue",
+    title: () => "Queue: requests waiting in line",
+    explain: "Requests that arrived while every worker was busy: the average over each 100 ms, and the longest the line got.",
+    source: "use",
+    unit: "",
+    series: [
+      { key: "queue", label: "average", color: "--series-1", value: (v) => v },
+      { key: "max_queue", label: "longest", color: "--series-2", value: (v) => v },
+    ],
+  },
+  {
+    id: "slow",
+    title: () => `Slow requests: share over ${fmtMs(state.slow * 1000)}`,
+    explain: "Out of the requests that finished in each half second, how many took longer than the lab's \"slow\" line.",
+    source: "points",
+    unit: "%",
+    max: 100,
+    series: [{ key: "slow", label: "slow", color: "--series-1", value: (v) => v * 100 }],
+  },
+];
+
+// points: one per half second, from the lab's latencies. use: one per server report.
+const state = { labs: [], running: false, points: [], use: [], steps: [], slow: 0.05, title: "", command: "" };
+const USE_GAP = 0.3; // seconds without a server report that break its line
+const $ = (id) => document.getElementById(id);
+
+function fmtMs(ms) {
+  if (ms == null) return "–";
+  if (ms === 0) return "0";
+  if (ms < 1) return ms.toFixed(2) + " ms";
+  if (ms < 10) return ms.toFixed(1) + " ms";
+  return Math.round(ms) + " ms";
+}
+function fmt(v, unit) {
+  if (v == null) return "–";
+  if (v === 0) return "0";
+  if (unit === "ms") return fmtMs(v);
+  if (unit === "%") return (v < 10 ? v.toFixed(1) : Math.round(v)) + "%";
+  return v < 10 ? v.toFixed(1) : String(Math.round(v));
+}
+// A round number at or above v whose quarters are round too: the four gridlines.
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 4, 6, 8, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/* ---------- charts ---------- */
+
+function buildCharts() {
+  $("charts").innerHTML = CHARTS.map((c) => `
+    <div class="card chart" id="chart-${c.id}">
+      <h2></h2>
+      <p class="explain">${esc(c.explain)}</p>
+      <div class="legend">${c.series.length > 1 ? c.series.map((s) =>
+        `<span><i style="background:var(${s.color})"></i>${esc(s.label)}</span>`).join("") : ""}</div>
+      <svg role="img"></svg>
+      <div class="tip"></div>
+    </div>`).join("");
+  for (const c of CHARTS) {
+    const el = $("chart-" + c.id);
+    const svg = el.querySelector("svg");
+    svg.addEventListener("mousemove", (e) => hover(c, el, e));
+    svg.addEventListener("mouseleave", () => { el.querySelector(".tip").style.display = "none"; c.hoverT = null; draw(c); });
+  }
+}
+
+function geometry(c, svg) {
+  const W = svg.clientWidth || 600, H = svg.clientHeight || 220;
+  const m = { l: 46, r: 10, t: 16, b: 24 };
+  const last = (a) => (a.length ? a[a.length - 1].t : 0);
+  const tMax = Math.max(10, last(state.points), last(state.use));
+  let vMax = 0;
+  for (const p of state[c.source]) for (const s of c.series) if (p[s.key] != null) vMax = Math.max(vMax, s.value(p[s.key]));
+  const yMax = c.max != null ? Math.max(c.max, niceMax(vMax)) : niceMax(vMax * 1.1);
+  const x = (t) => m.l + (t / tMax) * (W - m.l - m.r);
+  const y = (v) => H - m.b - (v / yMax) * (H - m.t - m.b);
+  return { W, H, m, tMax, yMax, x, y };
+}
+
+function draw(c) {
+  const el = $("chart-" + c.id);
+  const svg = el.querySelector("svg");
+  el.querySelector("h2").textContent = c.title();
+  const g = geometry(c, svg);
+  const parts = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = (g.yMax * i) / 4, yy = g.y(v);
+    parts.push(`<line class="${i ? "grid" : "base"}" x1="${g.m.l}" x2="${g.W - g.m.r}" y1="${yy}" y2="${yy}"/>`);
+    parts.push(`<text x="${g.m.l - 6}" y="${yy + 4}" text-anchor="end">${esc(fmt(v, c.unit))}</text>`);
+  }
+  const tStep = niceMax(g.tMax / 6);
+  for (let t = 0; t <= g.tMax + 1e-9; t += tStep) {
+    parts.push(`<text x="${g.x(t)}" y="${g.H - 6}" text-anchor="middle">${Math.round(t)}s</text>`);
+  }
+  state.steps.forEach((s, i) => {
+    const xx = g.x(s.t);
+    parts.push(`<line class="step" x1="${xx}" x2="${xx}" y1="${g.m.t - 4}" y2="${g.H - g.m.b}"/>`);
+    parts.push(`<text class="stepnum" x="${xx + 3}" y="${g.m.t - 6}">${i + 1}</text>`);
+  });
+  for (const s of c.series) {
+    let d = "", pen = false, prev = null;
+    for (const p of state[c.source]) {
+      const v = p[s.key];
+      if (c.source === "use" && prev != null && p.t - prev > USE_GAP) pen = false;
+      prev = p.t;
+      if (v == null) { pen = false; continue; }
+      d += `${pen ? "L" : "M"}${g.x(p.t).toFixed(1)},${g.y(s.value(v)).toFixed(1)}`;
+      pen = true;
+    }
+    if (d) parts.push(`<path class="line" d="${d}" stroke="${css(s.color)}"/>`);
+  }
+  if (c.hoverT != null) {
+    const xx = g.x(c.hoverT);
+    parts.push(`<line class="cross" x1="${xx}" x2="${xx}" y1="${g.m.t}" y2="${g.H - g.m.b}"/>`);
+    const p = state[c.source].find((q) => q.t === c.hoverT);
+    for (const s of c.series) {
+      if (p && p[s.key] != null) {
+        parts.push(`<circle cx="${xx}" cy="${g.y(s.value(p[s.key]))}" r="4" fill="${css(s.color)}" stroke="${css("--surface")}" stroke-width="2"/>`);
+      }
+    }
+  }
+  if (!state[c.source].length) {
+    parts.push(`<text class="empty" x="${(g.W + g.m.l) / 2}" y="${g.H / 2}" text-anchor="middle">${state.running ? "waiting for the first numbers…" : "pick a lab and press Run"}</text>`);
+  }
+  svg.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
+  svg.setAttribute("aria-label", c.title());
+  svg.innerHTML = parts.join("");
+}
+
+function hover(c, el, e) {
+  const data = state[c.source];
+  if (!data.length) return;
+  const svg = el.querySelector("svg");
+  const g = geometry(c, svg);
+  const box = svg.getBoundingClientRect();
+  const t = ((e.clientX - box.left - g.m.l) / (g.W - g.m.l - g.m.r)) * g.tMax;
+  let best = data[0];
+  for (const p of data) if (Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+  c.hoverT = best.t;
+  draw(c);
+  const tip = el.querySelector(".tip");
+  const step = [...state.steps].reverse().findIndex((s) => s.t <= best.t);
+  const stepNo = step < 0 ? null : state.steps.length - step;
+  tip.innerHTML =
+    `<div><b>${best.t.toFixed(1)} s</b>${stepNo ? ` · step ${stepNo}` : ""}${c.source === "points" ? ` · ${best.count} requests` : ""}</div>` +
+    c.series.map((s) => `<div><i style="background:var(${s.color})"></i>${esc(s.label)}: ${fmt(best[s.key] == null ? null : s.value(best[s.key]), c.unit)}</div>`).join("");
+  tip.style.display = "block";
+  const ex = el.getBoundingClientRect();
+  const left = svg.offsetLeft + g.x(best.t) + 12;
+  tip.style.left = Math.min(left, ex.width - tip.offsetWidth - 8) + "px";
+  tip.style.top = svg.offsetTop + 8 + "px";
+}
+
+let pending = false;
+function redraw() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; CHARTS.forEach(draw); });
+}
+
+/* ---------- labs, run, stop ---------- */
+
+function renderLabs() {
+  $("labs").innerHTML = state.labs.map((l, i) => `
+    <label class="lab">
+      <input type="radio" name="lab" value="${esc(l.id)}" ${i === 0 ? "checked" : ""}>
+      <strong>${esc(l.title)}</strong>
+      <span>${esc(l.question)}</span>
+    </label>`).join("");
+}
+
+function setRunning(running) {
+  state.running = running;
+  $("run").disabled = running;
+  $("stop").disabled = !running;
+  for (const input of document.querySelectorAll("input[name=lab], #quick")) input.disabled = running;
+}
+
+function status(html) { $("status").innerHTML = html; }
+
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  if (!r.ok) status(`<span class="bad">${esc((await r.json()).error || r.statusText)}</span>`);
+}
+
+$("run").addEventListener("click", () => {
+  const lab = document.querySelector("input[name=lab]:checked");
+  if (lab) post("/api/run", { lab: lab.value, quick: $("quick").checked });
+});
+$("stop").addEventListener("click", () => post("/api/stop"));
+
+/* ---------- steps, log, report ---------- */
+
+function renderSteps() {
+  if (!state.steps.length) return;
+  $("steps").innerHTML = state.steps.map((s, i) => `
+    <li class="${state.running && i === state.steps.length - 1 ? "now" : ""}">
+      <b>${i + 1}</b><time>${s.t.toFixed(1)} s</time><span>${esc(s.text)}</span>
+    </li>`).join("");
+}
+
+function appendLog(line) {
+  const log = $("log");
+  const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
+  log.textContent += line + "\n";
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+
+function markdown(md) {
+  const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  const cells = (row) => row.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+  const numeric = /^[-+~<>]?\s*[\d.,]+\s*(ms|µs|s|%|x|req\/s)?$/;
+  const lines = md.split("\n");
+  let html = "", i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith("```")) {
+      const buf = [];
+      for (i++; i < lines.length && !lines[i].startsWith("```"); i++) buf.push(lines[i]);
+      html += `<pre>${esc(buf.join("\n"))}</pre>`;
+      i++;
+      continue;
+    }
+    const h = line.match(/^(#{1,3}) (.*)$/);
+    if (h) { const n = h[1].length + 1; html += `<h${n}>${inline(h[2])}</h${n}>`; i++; continue; }
+    if (line.trim().startsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) rows.push(cells(lines[i++]));
+      const body = rows.slice(2);
+      const num = rows[0].map((_, k) => body.length && body.every((r) => numeric.test(r[k] || "") || r[k] === "unstable"));
+      html += `<div class="scroll"><table><thead><tr>${rows[0].map((c, k) => `<th class="${num[k] ? "num" : ""}">${inline(c)}</th>`).join("")}</tr></thead><tbody>` +
+        body.map((r) => `<tr>${r.map((c, k) => `<td class="${num[k] ? "num" : ""}">${inline(c)}</td>`).join("")}</tr>`).join("") +
+        `</tbody></table></div>`;
+      continue;
+    }
+    if (!line.trim()) { i++; continue; }
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,3} |```|\s*\|)/.test(lines[i])) buf.push(lines[i++]);
+    html += `<p>${inline(buf.join(" "))}</p>`;
+  }
+  return html;
+}
+
+/* ---------- the event stream ---------- */
+
+function listen() {
+  const events = new EventSource("/api/events");
+  events.addEventListener("run", (e) => {
+    const d = JSON.parse(e.data);
+    Object.assign(state, { points: [], use: [], steps: [], slow: d.slow, title: d.title, command: d.command });
+    $("log").textContent = "";
+    $("steps").innerHTML = "";
+    $("report").hidden = true;
+    const radio = document.querySelector(`input[name=lab][value="${CSS.escape(d.lab)}"]`);
+    if (radio) radio.checked = true;
+    $("quick").checked = d.quick;
+    setRunning(true);
+    status(`<b>${esc(d.title)}</b> running… <code>${esc(d.command)}</code>`);
+    redraw();
+  });
+  events.addEventListener("step", (e) => {
+    state.steps.push(JSON.parse(e.data));
+    renderSteps();
+    redraw();
+  });
+  events.addEventListener("slow", (e) => { state.slow = JSON.parse(e.data).above; redraw(); });
+  events.addEventListener("point", (e) => {
+    state.points.push(JSON.parse(e.data));
+    if (state.running) {
+      const p = state.points[state.points.length - 1];
+      status(`<b>${esc(state.title)}</b> running · ${p.t.toFixed(0)} s · <code>${esc(state.command)}</code>`);
+    }
+    redraw();
+  });
+  events.addEventListener("use", (e) => { state.use.push(JSON.parse(e.data)); redraw(); });
+  events.addEventListener("log", (e) => appendLog(JSON.parse(e.data).line));
+  events.addEventListener("done", (e) => {
+    const d = JSON.parse(e.data);
+    setRunning(false);
+    renderSteps();
+    if (d.stopped) status(`<b>${esc(state.title)}</b> stopped after ${d.seconds} s.`);
+    else if (d.code === 0) status(`<b>${esc(state.title)}</b> finished in ${d.seconds} s. Tables below.`);
+    else status(`<span class="bad"><b>${esc(state.title)}</b> failed (exit code ${d.code}). See what it printed.</span>`);
+    if (d.report) {
+      $("report").innerHTML = markdown(d.report);
+      $("report").hidden = false;
+    }
+    redraw();
+  });
+}
+
+async function start() {
+  buildCharts();
+  const r = await fetch("/api/labs");
+  const d = await r.json();
+  state.labs = d.labs;
+  renderLabs();
+  setRunning(d.running);
+  redraw();
+  listen();
+}
+window.addEventListener("resize", redraw);
+start();
+</script>
+</body>
+</html>

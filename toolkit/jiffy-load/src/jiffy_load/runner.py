@@ -11,7 +11,8 @@ Two ways to generate load, and they disagree about what the system's latency is:
   This is *coordinated omission*: the load tool and the system coordinate to hide the
   slow period.
 
-The target is any ``call(i) -> Future``: the i-th request of the run.
+The target is any ``call(i) -> Future``: the i-th request of the run. Pass ``on_sample``
+to see each request the moment it finishes, for example to draw it live.
 """
 
 from __future__ import annotations
@@ -72,18 +73,24 @@ def open_loop[T](
     *,
     timeout: float = 30.0,
     lead: float = 0.05,
+    on_sample: Callable[[Sample[T]], object] | None = None,
 ) -> list[Sample[T]]:
     """Send request ``i`` at ``start + schedule[i]`` and wait for every answer."""
     samples: list[Sample[T] | None] = [None] * len(schedule)
     futures: list[Future[T]] = []
     start = clock() + lead
 
+    def keep(sample: Sample[T]) -> None:
+        samples[sample.index] = sample
+        if on_sample is not None:
+            on_sample(sample)
+
     def recorder(i: int, intended: float, sent: float) -> Callable[[Future[T]], None]:
         def done(f: Future[T]) -> None:
             finished = clock()
             error = f.exception()
             value = None if error is not None else f.result()
-            samples[i] = Sample(i, intended, sent, finished, value, error)
+            keep(Sample(i, intended, sent, finished, value, error))
 
         return done
 
@@ -94,18 +101,17 @@ def open_loop[T](
         try:
             future = call(i)
         except Exception as exc:  # the target refused synchronously: still a sample
-            samples[i] = Sample(i, intended, sent, clock(), None, exc)
+            keep(Sample(i, intended, sent, clock(), None, exc))
             continue
         future.add_done_callback(recorder(i, intended, sent))
         futures.append(future)
     wait_all(futures, timeout=timeout)
     now = clock()
-    return [
-        s
-        if s is not None
-        else Sample(i, start + schedule[i], start + schedule[i], now, None, TimeoutError())
-        for i, s in enumerate(samples)
-    ]
+    for i, s in enumerate(samples):
+        if s is None:
+            due = start + schedule[i]
+            keep(Sample(i, due, due, now, None, TimeoutError()))
+    return [s for s in samples if s is not None]
 
 
 def closed_loop[T](
@@ -115,6 +121,7 @@ def closed_loop[T](
     *,
     think: float = 0.0,
     timeout: float = 30.0,
+    on_sample: Callable[[Sample[T]], object] | None = None,
 ) -> list[Sample[T]]:
     """``users`` threads, each: send, wait for the answer, think, repeat."""
     samples: list[Sample[T]] = []
@@ -136,6 +143,8 @@ def closed_loop[T](
             sample = Sample(i, sent, sent, clock(), value, error)
             with lock:
                 samples.append(sample)
+            if on_sample is not None:
+                on_sample(sample)
             if think:
                 time.sleep(think)
 

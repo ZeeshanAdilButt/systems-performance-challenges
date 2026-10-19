@@ -55,6 +55,16 @@ def test_a_synchronous_failure_is_still_a_sample() -> None:
     assert isinstance(samples[0].error, ConnectionError)
 
 
+def test_on_sample_sees_every_request_as_it_finishes() -> None:
+    target = OneWorker(service=0.001)
+    seen: list[Sample[int]] = []
+    samples = open_loop(uniform(200, 0.1), target.call, on_sample=seen.append)
+    assert sorted(s.index for s in seen) == [s.index for s in samples]
+    seen.clear()
+    samples = closed_loop(2, 0.1, target.call, on_sample=seen.append)
+    assert len(seen) == len(samples) > 0
+
+
 @pytest.mark.slow
 def test_closed_loop_hides_a_freeze_that_open_loop_counts() -> None:
     # Frozen for 0.4 s out of 1.2 s. Requests due during the freeze all wait for it.

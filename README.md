@@ -75,6 +75,53 @@ uv run labs/01-the-knee/knee.py
 Add `--quick` for a shorter run. The lab prints its tables and saves them to
 `results.md` in its folder.
 
+## Watch a lab live
+
+If you'd rather watch charts than read tables, start the dashboard:
+
+```bash
+uv run jiffy-ui
+```
+
+It opens a page in your browser. Pick a lab, press **Run**, and four charts fill in while
+the lab measures:
+
+- **Latency**: p50 (the typical wait) and p99 (only 1 in 100 waited longer), one point
+  per half second.
+- **Server busy %**: how much of the time the workers were working, measured by the
+  server itself ten times a second. A gap in this line means the server was frozen and
+  couldn't report (lab 02 freezes it on purpose).
+- **Queue**: how many requests were waiting in line.
+- **Slow requests**: the share that took longer than the lab's "slow" line.
+
+Numbered dashed lines mark each step of the lab (the same progress lines it prints in a
+terminal). Hover over a chart to read the exact numbers. When the lab finishes, its
+tables appear under the charts.
+
+How the numbers get from the lab to the page:
+
+1. The dashboard starts the lab exactly as you would in a terminal, plus one setting,
+   `JIFFY_LIVE`: where to send its numbers
+   ([runner.py](toolkit/jiffy-ui/src/jiffy_ui/runner.py#L66)).
+2. The load generator hands every finished request to the live feed
+   ([experiment.py](toolkit/jiffy-service/src/jiffy_service/experiment.py#L64)). The feed
+   collects them and sends a batch ten times a second
+   ([live.py](toolkit/jiffy-metrics/src/jiffy_metrics/live.py#L69-L89)).
+3. The server reports busy % and queue length for the last 100 ms, ten times a second
+   ([server.py](toolkit/jiffy-service/src/jiffy_service/server.py#L180-L195)), using the
+   same counter the tables use
+   ([use.py](toolkit/jiffy-metrics/src/jiffy_metrics/use.py#L117)).
+4. Every half second the dashboard turns the batches into p50 and p99 with the same
+   percentile code the tables use
+   ([board.py](toolkit/jiffy-ui/src/jiffy_ui/board.py#L64-L77)), and pushes them to the
+   page over one HTTP response that stays open
+   ([app.py](toolkit/jiffy-ui/src/jiffy_ui/app.py#L127)). That's called *server-sent
+   events*.
+
+Without `JIFFY_LIVE` the feed does nothing, so a lab run from the terminal is unchanged.
+A run from the dashboard saves its tables to `.cache/ui/`, never over a lab's
+`results.md`. The page draws its own charts, so nothing extra gets installed.
+
 ## How a lab works
 
 Every lab does the same four things:
@@ -91,7 +138,7 @@ The interesting lessons are usually in the gap between those two views.
 
 ## The toolkit
 
-The labs share four small tools, kept in [toolkit/](toolkit) so every lab (and any other
+The labs share a few small tools, kept in [toolkit/](toolkit) so every lab (and any other
 project) can reuse them:
 
 | Tool | What it does |
@@ -100,6 +147,7 @@ project) can reuse them:
 | [jiffy-load](toolkit/jiffy-load) | The load generator: sends requests on a schedule and times each one |
 | [jiffy-metrics](toolkit/jiffy-metrics) | Turns raw timings into p50/p99, busy % and queue length, and prints tables |
 | [jiffy-queueing](toolkit/jiffy-queueing) | The math that predicts latency before you measure it, plus a perfect simulator |
+| [jiffy-ui](toolkit/jiffy-ui) | The dashboard: runs a lab and draws its numbers as live charts |
 
 ## Check everything
 

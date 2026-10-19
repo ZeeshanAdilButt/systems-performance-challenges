@@ -7,8 +7,9 @@ next lab, or a real project, will reuse.
 |---|---|---|
 | [jiffy-service](jiffy-service) | The fake **server** (4 workers and a line), the **client** that talks to it, and helpers to run one experiment and collect both views | [server](jiffy-service/src/jiffy_service/server.py), [client](jiffy-service/src/jiffy_service/client.py), [experiment](jiffy-service/src/jiffy_service/experiment.py) |
 | [jiffy-load](jiffy-load) | The **load generator**: decides when each request is sent, sends it, and times it | [schedules](jiffy-load/src/jiffy_load/arrivals.py), [senders](jiffy-load/src/jiffy_load/runner.py) |
-| [jiffy-metrics](jiffy-metrics) | Turns raw timings into **p50/p99**, **busy %** and **queue length**, and prints tables | [percentiles](jiffy-metrics/src/jiffy_metrics/histogram.py), [busy % and queue](jiffy-metrics/src/jiffy_metrics/use.py), [tables](jiffy-metrics/src/jiffy_metrics/report.py) |
+| [jiffy-metrics](jiffy-metrics) | Turns raw timings into **p50/p99**, **busy %** and **queue length**, prints tables, and sends a **live feed** while a lab runs | [percentiles](jiffy-metrics/src/jiffy_metrics/histogram.py), [busy % and queue](jiffy-metrics/src/jiffy_metrics/use.py), [tables](jiffy-metrics/src/jiffy_metrics/report.py), [live feed](jiffy-metrics/src/jiffy_metrics/live.py) |
 | [jiffy-queueing](jiffy-queueing) | The **math** that predicts waiting before you measure, and a perfect **simulator** to compare against | [formulas](jiffy-queueing/src/jiffy_queueing/theory.py), [simulator](jiffy-queueing/src/jiffy_queueing/simulate.py) |
+| [jiffy-ui](jiffy-ui) | The **dashboard**: runs a lab and draws its live feed as charts in the browser | [runs a lab](jiffy-ui/src/jiffy_ui/runner.py), [chart points](jiffy-ui/src/jiffy_ui/board.py), [web server](jiffy-ui/src/jiffy_ui/app.py), [page](jiffy-ui/src/jiffy_ui/page.html) |
 
 ## How they fit together
 
@@ -22,11 +23,15 @@ next lab, or a real project, will reuse.
                  (send and time)      (p99, busy %, queue)
 
                 jiffy-queueing  (math and simulation, used by lab 01)
+
+                jiffy-ui  (the dashboard: starts any lab, listens to jiffy-metrics' live feed)
 ```
 
 Arrows only point down. `jiffy-metrics`, `jiffy-load` and `jiffy-queueing` use nothing
 but Python's standard library. `jiffy-service` uses the other two because it is the lab
-bench: a server plus the code that drives it and reads the results.
+bench: a server plus the code that drives it and reads the results. `jiffy-ui` sits
+outside the labs: it starts one as a separate process, the same way you would, and only
+needs `jiffy-metrics`.
 
 ## When code becomes a tool
 

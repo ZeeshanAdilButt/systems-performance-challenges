@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from jiffy_load import HedgeBudget, Sample, open_loop, poisson
-from jiffy_metrics import Histogram, RollingPercentile, ms, pct, table
+from jiffy_metrics import Histogram, RollingPercentile, live, ms, pct, table
 from jiffy_service import Client, Reply, spawn
 
 WORKERS = 128  # enough that no call ever waits in line, hedges included
@@ -205,7 +205,7 @@ def measure(client: Client, pool: ThreadPoolExecutor, policy: Policy, n: int, se
             fan_out, client, seed * 100_000 + i, normal_time(i / len(schedule)), hedger
         )
 
-    return Result(policy, open_loop(schedule, page))
+    return Result(policy, open_loop(schedule, page, on_sample=live.record))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -223,6 +223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(text, flush=True)
         out.append(text)
 
+    live.slow_above(THRESHOLD)
     results: list[Result] = []
     with (
         spawn(WORKERS) as address,
@@ -230,7 +231,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ThreadPoolExecutor(max_workers=32) as pool,
     ):
         for policy in POLICIES:
-            print(f"  {policy.name}: {n} pages, {K} calls each ...", flush=True)
+            live.step(f"  {policy.name}: {n} pages, {K} calls each ...")
             results.append(measure(client, pool, policy, n, args.seed))
 
     say(

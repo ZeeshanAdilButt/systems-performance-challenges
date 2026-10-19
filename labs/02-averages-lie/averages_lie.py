@@ -25,7 +25,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from jiffy_load import bursty, poisson
-from jiffy_metrics import Histogram, ms, pct, table
+from jiffy_metrics import Histogram, live, ms, pct, table
 from jiffy_service import Client, Run, Stall, calibrate, drive_closed, drive_open, spawn
 
 WORKERS = 4
@@ -55,6 +55,7 @@ def microbursts(client: Client, service: float, duration: float, seed: int) -> l
             ),
         ),
     ):
+        live.step(f"    {name} ...")
         rng = random.Random(seed + 1)
         work = [rng.expovariate(1 / MEAN_WORK) for _ in schedule]
         run = drive_open(client, schedule, work, widths=(1.0, 0.01))
@@ -94,11 +95,13 @@ def omission(service: float, duration: float, seed: int) -> tuple[list[list[obje
         rng = random.Random(seed)
         schedule = poisson(STALL_RATE, duration, rng)
         work = [rng.expovariate(1 / MEAN_WORK) for _ in schedule]
+        live.step("    open-loop tool, every request on schedule ...")
         opened = drive_open(client, schedule, work)
         # Each closed-loop user sends, waits, then thinks long enough that the pair of
         # users together aim for the same rate as the open-loop run.
         think = max(0.0, CLOSED_USERS / STALL_RATE - service)
         draws = random.Random(seed + 2)
+        live.step(f"    now the closed-loop tool, {CLOSED_USERS} users ...")
         closed = drive_closed(
             client,
             CLOSED_USERS,
@@ -129,9 +132,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(text, flush=True)
         out.append(text)
 
+    live.slow_above(SLOW)
     with spawn(WORKERS) as address, Client(address) as client:
+        live.step("  calibrating ...")
         service = calibrate(client, MEAN_WORK, WORKERS)
-        print(f"  calibrated: {ms(service)} per request; running part A ...", flush=True)
+        live.step(f"  calibrated: {ms(service)} per request; running part A ...")
         rows = microbursts(client, service, burst_seconds, args.seed)
 
     say(f"## A. Same average load, {BUSY:.0%} of {WORKERS} workers, two shapes")
@@ -153,7 +158,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     say()
 
-    print("  running part B (stalls) ...", flush=True)
+    live.step("  running part B (stalls) ...")
     ladder_rows, opened, closed = omission(service, stall_seconds, args.seed)
     say(
         f"## B. One service, a {ms(STALL.length)} pause every {STALL.every:g} s,"

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from jiffy_load import poisson
-from jiffy_metrics import Histogram, bars, ms, pct, table
+from jiffy_metrics import Histogram, bars, live, ms, pct, table
 from jiffy_queueing import MMc, fcfs, latency_multiplier
 from jiffy_service import Client, Run, calibrate, drive_open, spawn
 
@@ -153,6 +153,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     say()
 
     with spawn(WORKERS) as address, Client(address) as client:
+        live.step(f"  calibrating: how long does {ms(MEAN_WORK)} of work really take? ...")
         service = calibrate(client, MEAN_WORK, WORKERS)
         say("## Calibration: measure, don't guess")
         say()
@@ -164,7 +165,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         points = []
         for target in targets:
             duration = duration_for(target, base)
-            print(f"  measuring at {target:.0%} for {duration:.0f}s ...", flush=True)
+            live.step(f"  measuring at {target:.0%} for {duration:.0f}s ...")
             points.append(measure(client, target, service, duration, rng))
 
     say(f"## The sweep: {WORKERS} workers, open-loop Poisson load, {base:.0f}s or more per point")

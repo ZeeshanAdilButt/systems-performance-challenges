@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from jiffy_load import Sample, open_loop, poisson
-from jiffy_metrics import Histogram, ms, pct, table
+from jiffy_metrics import Histogram, live, ms, pct, table
 from jiffy_service import Client, Reply, spawn
 
 WORKERS = 64  # plenty: this lab is about variance, not queueing
@@ -122,7 +122,9 @@ def measure(
     schedule = poisson(FRONT_RATE, n / FRONT_RATE, random.Random(seed))
     hedge = HEDGE_AFTER if hedged else None
     samples = open_loop(
-        schedule, lambda i: pool.submit(fan_out, client, k, seed * 100_000 + i, hedge)
+        schedule,
+        lambda i: pool.submit(fan_out, client, k, seed * 100_000 + i, hedge),
+        on_sample=live.record,
     )
     return Result(k, hedged, samples)
 
@@ -142,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(text, flush=True)
         out.append(text)
 
+    live.slow_above(THRESHOLD)
     plain: list[Result] = []
     hedged: list[Result] = []
     with (
@@ -150,10 +153,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         ThreadPoolExecutor(max_workers=32) as pool,
     ):
         for k in FANOUTS:
-            print(f"  fan-out {k}: {n} front-end requests ...", flush=True)
+            live.step(f"  fan-out {k}: {n} front-end requests ...")
             plain.append(measure(client, pool, k, n, args.seed + k, hedged=False))
         for k in (20, 50):
-            print(f"  fan-out {k}, hedged after {ms(HEDGE_AFTER)} ...", flush=True)
+            live.step(f"  fan-out {k}, hedged after {ms(HEDGE_AFTER)} ...")
             hedged.append(measure(client, pool, k, n, args.seed + k, hedged=True))
 
     # p: how often a single backend call was really slow, measured over every plain run.

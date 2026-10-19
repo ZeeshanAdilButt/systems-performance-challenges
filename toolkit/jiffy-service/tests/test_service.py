@@ -64,6 +64,18 @@ def test_unknown_op_is_an_error(server: Server) -> None:
             future.result(timeout=5)
 
 
+def test_close_is_quick(server: Server) -> None:
+    client = Client(server.address)
+    client.work(0.001).result(timeout=5)
+    started = time.perf_counter()
+    client.close()
+    # The reader thread is blocked in recv; close() must wake it, not wait out the
+    # five-second join timeout (which it used to on Windows).
+    assert time.perf_counter() - started < 0.1
+    with pytest.raises(ConnectionError):
+        client.work(0.001)
+
+
 @pytest.mark.slow
 def test_spawned_process() -> None:
     with spawn(workers=1) as address, Client(address) as client:

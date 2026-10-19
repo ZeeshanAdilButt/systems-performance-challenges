@@ -11,7 +11,7 @@ import contextlib
 import itertools
 import socket
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Any
@@ -72,10 +72,20 @@ class Client:
         """Start a fresh run on the server: its USE history is cleared."""
         self._send({"op": "reset"}, lambda m: None).result(timeout=timeout)
 
+    def _lines(self) -> Iterator[bytes]:
+        """The replies, one line at a time. Plain ``recv``, not ``makefile``: the file
+        object holds a reference that turns ``close()`` into a no-op until it is closed
+        too, and on Windows only a real close (not ``shutdown``) wakes a blocked
+        ``recv``, so ``close()`` would hang until the server hung up."""
+        buffer = b""
+        while chunk := self._sock.recv(65536):
+            buffer += chunk
+            *lines, buffer = buffer.split(b"\n")
+            yield from lines
+
     def _read(self) -> None:
-        stream = self._sock.makefile("rb")
         try:
-            for line in stream:
+            for line in self._lines():
                 message = decode(line)
                 with self._lock:
                     entry = self._pending.pop(message["id"], None)

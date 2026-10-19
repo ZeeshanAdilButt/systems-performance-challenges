@@ -6,7 +6,7 @@ This recorder is told about every transition instead (a request queued, a worker
 it up, a worker finished), so it knows the exact state at every instant. Ask it for
 windows of any width afterwards: one second, ten milliseconds, both from the same run.
 
-The three numbers are Brendan Gregg's USE method:
+The three numbers are the USE method:
 
 - **Utilization**: share of the time the resource was busy, as busy-worker-seconds over
   capacity-seconds.

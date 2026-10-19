@@ -2,12 +2,15 @@
 
 [![verify](https://github.com/ZeeshanAdilButt/systems-performance-challenges/actions/workflows/verify.yml/badge.svg)](https://github.com/ZeeshanAdilButt/systems-performance-challenges/actions/workflows/verify.yml)
 
-Small, runnable experiments on the ideas in chapter 1 of Brendan Gregg's *Systems
-Performance*: latency, utilization, saturation, queueing, and why the obvious numbers
-mislead. Each challenge takes one idea and runs it on your machine against a real server
-process, over real TCP. It puts the prediction (queueing theory), a perfect simulation of
-the same workload, and the measurement side by side, so you can see where they agree and
-where they don't.
+Small, runnable labs on what makes systems fast or slow: latency, utilization,
+saturation, queueing, and why the obvious numbers mislead. Each challenge takes one idea
+and runs it on your machine against a real server process, over real TCP. It puts the
+prediction (queueing theory), a perfect simulation of the same workload, and the
+measurement side by side, so you can see where they agree and where they don't.
+
+This is a growing series. New challenges come at performance from different angles
+(CPU, memory, disk, network, the runtime, the kernel), go deeper as they go, and build
+their own tools when the existing ones can't show what matters.
 
 Everything is plain Python. No database, no Docker, and it runs the same on Windows,
 macOS and Linux.
@@ -39,9 +42,9 @@ Markdown report to `reports/`.
 
 ## Learn it
 
-Start with [docs/mental-model.md](docs/mental-model.md). It defines each term from the
-chapter (latency, service time, wait time, utilization, saturation, bottleneck) and points
-to the number in the output that shows it. Then run 01, 02 and 03 in that order. Each one
+Start with [docs/mental-model.md](docs/mental-model.md). It defines each term
+(latency, service time, wait time, utilization, saturation, bottleneck) and points to the
+number in the output that shows it. Then run 01, 02 and 03 in that order. Each one
 builds on the vocabulary of the one before.
 
 ## Packages

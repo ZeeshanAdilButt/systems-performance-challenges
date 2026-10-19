@@ -1,9 +1,8 @@
 # The mental model, and where to see each piece
 
-This repository is a runnable companion to chapter 1 of Brendan Gregg's *Systems
-Performance* (2nd edition). The chapter defines the vocabulary every later chapter uses.
-Here each term is tied to a number you can produce on your own machine, and to the line of
-code that produces it.
+Performance work has a small vocabulary that everything else is built on. Here each term
+is tied to a number you can produce on your own machine, and to the line of code that
+produces it. Later challenges reuse these words, so this page is the place to start.
 
 ## The vocabulary
 
@@ -51,7 +50,7 @@ headroom to keep.
 
 ## Why it is hard
 
-| Chapter 1 says | This repository shows it in |
+| The difficulty | This repository shows it in |
 |---|---|
 | Latency grows non-linearly as utilization approaches 100% | 01, the sweep: p99 roughly quadruples between 70% and 96% busy |
 | Averages hide bursts ("microbursts") | 02 part A: two workloads at the same 1-second utilization, one with 2x the p99 |
@@ -62,7 +61,7 @@ headroom to keep.
 
 ## Observability and experimentation
 
-Gregg splits the tools into two families. This repository uses both, deliberately:
+Performance tools fall into two families. This repository uses both, deliberately:
 
 - **Observability** watches a running system without changing it. The `UseRecorder`
   inside the server is observability: it sees every transition and counts them. It is
@@ -112,8 +111,6 @@ None of these would show up in a design review. Each showed up in a table.
 
 ## Further reading
 
-- Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., chapter 1
-  (and chapter 2 for the USE method and queueing).
 - Jeffrey Dean and Luiz André Barroso, "The Tail at Scale", CACM 2013. Challenge 03.
 - Gil Tene, "How NOT to Measure Latency". Coordinated omission, challenge 02.
 - Neil Gunther, *Guerrilla Capacity Planning*. Queueing for working engineers.
